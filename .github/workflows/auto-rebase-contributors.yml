@@ -5,8 +5,7 @@
 
 on:
   # Fires when a contributor opens or updates their PR.
-  # No paths filter here — path filtering on pull_request_target is unreliable
-  # for fork PRs. We check whether contributors.json changed inside the job.
+  # No paths filter — path filtering on pull_request_target is unreliable for fork PRs.
   pull_request_target:
     types: [opened, synchronize, reopened]
 
@@ -59,7 +58,7 @@ jobs:
             /tmp/pr-contributors.json \
             > /tmp/merged-contributors.json
 
-      - name: Push rebased file to PR branch
+      - name: Force-push rebased commit onto PR branch
         if: steps.check.outputs.changed == 'true'
         id: push
         continue-on-error: true
@@ -70,17 +69,23 @@ jobs:
         run: |
           git config user.name  "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git remote add fork "https://x-access-token:${GH_TOKEN}@github.com/${FORK_REPO}"
-          git fetch fork "${PR_BRANCH}" --depth=1
-          git checkout -b pr-work "fork/${PR_BRANCH}"
+
+          # We are on main's HEAD. Apply the merged content here and commit.
+          # This creates a commit that is a direct child of main — no divergent history.
           cp /tmp/merged-contributors.json contributors.json
           git add contributors.json
+
           if git diff --cached --quiet; then
             echo "Already up to date — nothing to push."
             exit 0
           fi
+
           git commit -m "chore: rebase contributors.json against main [skip ci]"
-          git push fork "HEAD:${PR_BRANCH}"
+
+          # Force-push this single clean commit onto the fork branch.
+          # Because it is based on main's HEAD, GitHub will see zero merge conflicts.
+          git remote add fork "https://x-access-token:${GH_TOKEN}@github.com/${FORK_REPO}"
+          git push fork "HEAD:refs/heads/${PR_BRANCH}" --force
 
       - name: Comment if push failed
         if: steps.check.outputs.changed == 'true' && steps.push.outcome == 'failure'
@@ -132,12 +137,19 @@ jobs:
             const { spawnSync } = require('child_process');
             const fs = require('fs');
             const { owner, repo } = context.repo;
+            const token = process.env.GH_TOKEN;
 
             const run = (cmd, args) => {
               const r = spawnSync(cmd, args, { encoding: 'utf8' });
               if (r.status !== 0) throw new Error(`${cmd} ${args.join(' ')}\n${r.stderr}`);
               return r.stdout;
             };
+
+            run('git', ['config', 'user.name',  'github-actions[bot]']);
+            run('git', ['config', 'user.email', 'github-actions[bot]@users.noreply.github.com']);
+
+            // Remember main's HEAD so we can reset back to it between PRs.
+            const mainSha = run('git', ['rev-parse', 'HEAD']).trim();
 
             const prs = await github.paginate(github.rest.pulls.list, {
               owner, repo, state: 'open', base: 'main', per_page: 100
@@ -153,52 +165,54 @@ jobs:
               const prBranch = pr.head.ref;
               if (!forkRepo) continue;
 
-              const [forkOwner, forkName] = forkRepo.split('/');
               core.info(`Processing PR #${pr.number} (${forkRepo}/${prBranch})…`);
 
-              // Fetch only the data file from the PR — safe, no fork code runs
+              // Fetch only the data file — no fork code is executed
               run('git', ['fetch', 'origin', `refs/pull/${pr.number}/head`, '--depth=1']);
               const prContent = run('git', ['show', 'FETCH_HEAD:contributors.json']);
               const prFile = `/tmp/pr-${pr.number}.json`;
               fs.writeFileSync(prFile, prContent);
 
-              // Compute conflict-free merge
+              // Compute conflict-free merge (main's entries + new entries from PR)
               const merged = run('node', [
                 '.github/scripts/merge-contributors.mjs',
                 'contributors.json',
                 prFile
               ]);
 
-              // Push via Contents API (works when "Allow edits from maintainers" is on — the default)
-              let pushed = false;
-              try {
-                const { data: existing } = await github.rest.repos.getContent({
-                  owner: forkOwner, repo: forkName,
-                  path: 'contributors.json', ref: prBranch
-                });
-                const current = Buffer.from(existing.content, 'base64').toString('utf8');
-                if (current.trim() === merged.trim()) {
-                  core.info(`PR #${pr.number}: Already up to date.`);
-                  pushed = true;
-                } else {
-                  await github.rest.repos.createOrUpdateFileContents({
-                    owner: forkOwner, repo: forkName,
-                    path: 'contributors.json',
-                    message: 'chore: rebase contributors.json against main [skip ci]',
-                    content: Buffer.from(merged).toString('base64'),
-                    sha: existing.sha,
-                    branch: prBranch
-                  });
-                  core.info(`PR #${pr.number}: Pushed via Contents API.`);
-                  pushed = true;
-                }
-              } catch (e) {
-                core.warning(`PR #${pr.number}: Contents API failed (${e.status ?? e.message}) — falling back to comment.`);
+              // Commit on top of main's HEAD (we are always at mainSha here)
+              fs.writeFileSync('contributors.json', merged);
+              run('git', ['add', 'contributors.json']);
+
+              const noDiff = spawnSync('git', ['diff', '--cached', '--quiet'], { encoding: 'utf8' });
+              if (noDiff.status === 0) {
+                core.info(`PR #${pr.number}: Already up to date.`);
+                run('git', ['restore', '--staged', 'contributors.json']);
+                continue;
               }
+
+              run('git', ['commit', '-m', 'chore: rebase contributors.json against main [skip ci]']);
+
+              // Force-push this clean commit onto the fork branch.
+              // Because it is based on main's HEAD, there will be no merge conflict.
+              let pushed = false;
+              const remoteName = `fork-${pr.number}`;
+              const forkUrl = `https://x-access-token:${token}@github.com/${forkRepo}`;
+              try {
+                run('git', ['remote', 'add', remoteName, forkUrl]);
+                run('git', ['push', remoteName, `HEAD:refs/heads/${prBranch}`, '--force']);
+                core.info(`PR #${pr.number}: Force-pushed rebased branch.`);
+                pushed = true;
+              } catch (e) {
+                core.warning(`PR #${pr.number}: Push failed — ${e.message}`);
+              }
+
+              // Reset back to main's HEAD for the next PR in the loop
+              run('git', ['reset', '--hard', mainSha]);
 
               if (pushed) continue;
 
-              // Fallback: post / update a comment with the ready-to-paste content.
+              // Fallback: post/update a comment with the ready-to-paste content.
               // The <!-- auto-rebase-bot --> marker prevents duplicate comments.
               const { data: comments } = await github.rest.issues.listComments({
                 owner, repo, issue_number: pr.number, per_page: 100
