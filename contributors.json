@@ -6,21 +6,71 @@
     "intro": "Building communities, content & tools for the PHP & Laravel ecosystem.",
     "techStack": ["Laravel", "PHP", "JavaScript"],
     "packages": [
-      { "name": "mrpunyapal/laravel-auth-jobs",          "url": "https://packagist.org/packages/mrpunyapal/laravel-auth-jobs",          "registry": "packagist" },
-      { "name": "mrpunyapal/laravel-extended-commands",  "url": "https://packagist.org/packages/mrpunyapal/laravel-extended-commands",  "registry": "packagist" },
-      { "name": "mrpunyapal/pest-annotator-plugin",      "url": "https://packagist.org/packages/mrpunyapal/pest-annotator-plugin",      "registry": "packagist" },
-      { "name": "mrpunyapal/peststan",                   "url": "https://packagist.org/packages/mrpunyapal/peststan",                   "registry": "packagist" },
-      { "name": "mrpunyapal/php-2fa",                    "url": "https://packagist.org/packages/mrpunyapal/php-2fa",                    "registry": "packagist" },
-      { "name": "mrpunyapal/rector-pest",                "url": "https://packagist.org/packages/mrpunyapal/rector-pest",                "registry": "packagist" },
-      { "name": "laravel-extended-relationships",        "url": "https://packagist.org/packages/mr-punyapal/laravel-extended-relationships",        "registry": "github"    }
+      {
+        "name": "mrpunyapal/laravel-auth-jobs",
+        "url": "https://packagist.org/packages/mrpunyapal/laravel-auth-jobs",
+        "registry": "packagist"
+      },
+      {
+        "name": "mrpunyapal/laravel-extended-commands",
+        "url": "https://packagist.org/packages/mrpunyapal/laravel-extended-commands",
+        "registry": "packagist"
+      },
+      {
+        "name": "mrpunyapal/pest-annotator-plugin",
+        "url": "https://packagist.org/packages/mrpunyapal/pest-annotator-plugin",
+        "registry": "packagist"
+      },
+      {
+        "name": "mrpunyapal/peststan",
+        "url": "https://packagist.org/packages/mrpunyapal/peststan",
+        "registry": "packagist"
+      },
+      {
+        "name": "mrpunyapal/php-2fa",
+        "url": "https://packagist.org/packages/mrpunyapal/php-2fa",
+        "registry": "packagist"
+      },
+      {
+        "name": "mrpunyapal/rector-pest",
+        "url": "https://packagist.org/packages/mrpunyapal/rector-pest",
+        "registry": "packagist"
+      },
+      {
+        "name": "laravel-extended-relationships",
+        "url": "https://packagist.org/packages/mr-punyapal/laravel-extended-relationships",
+        "registry": "github"
+      }
     ],
     "website": "https://mrpunyapal.dev",
     "twitter": "MrPunyapal",
     "blog": "https://mrpunyapal.dev/talks",
     "openSource": [
-      { "name": "OSSForAll/I-AM-CONTRIBUTOR", "url": "https://github.com/OSSForAll/I-AM-CONTRIBUTOR" }
+      {
+        "name": "OSSForAll/I-AM-CONTRIBUTOR",
+        "url": "https://github.com/OSSForAll/I-AM-CONTRIBUTOR"
+      }
     ],
     "linkedin": "mrpunyapal"
+  },
+  {
+    "github": "shruti-rawal",
+    "name": "Shruti Raval",
+    "category": "Beginner",
+    "intro": "Working with Library Software.",
+    "techStack": ["PHP", "Laravel", "JavaScript"],
+    "packages": [
+      {
+        "name": "your-package",
+        "url": "https://packagist.org/packages/you/your-package",
+        "registry": "packagist"
+      }
+    ],
+    "website": "https://yoursite.com",
+    "twitter": "yourhandle",
+    "blog": "https://dev.to/yourhandle",
+    "youtube": "https://youtube.com/@yourchannel",
+    "linkedin": "yourhandle",
+    "openSource": [{ "name": "org/repo", "url": "https://github.com/org/repo" }]
   }
 ]
-
