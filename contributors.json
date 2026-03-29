@@ -21,9 +21,15 @@
       { "name": "OSSForAll/I-AM-CONTRIBUTOR", "url": "https://github.com/OSSForAll/I-AM-CONTRIBUTOR" }
     ],
     "linkedin": "mrpunyapal"
-  },{
-    "github":"sonalidudhia",
-    "name":"sonali dudhia"
+  },  {
+    "github": "gopalkeshri",
+    "name": "Gopal keshri",
+    "category": "Contributor",
+    "intro": "I am laravel devloper",
+    "techStack": ["Laravel", "PHP", "JavaScript"],
+    "website": "https://www.gopalkeshri.com",
+    "twitter": "gopalkeshridev",
+    "linkedin": "gopalkeshri"
   }
 ]
 
