@@ -1,26 +1,18 @@
-[
-  {
-    "github": "mrpunyapal",
-    "name": "Punyapal Shah",
-    "category": "Maintainer",
-    "intro": "Building communities, content & tools for the PHP & Laravel ecosystem.",
-    "techStack": ["Laravel", "PHP", "JavaScript"],
-    "packages": [
-      { "name": "mrpunyapal/laravel-auth-jobs",          "url": "https://packagist.org/packages/mrpunyapal/laravel-auth-jobs",          "registry": "packagist" },
-      { "name": "mrpunyapal/laravel-extended-commands",  "url": "https://packagist.org/packages/mrpunyapal/laravel-extended-commands",  "registry": "packagist" },
-      { "name": "mrpunyapal/pest-annotator-plugin",      "url": "https://packagist.org/packages/mrpunyapal/pest-annotator-plugin",      "registry": "packagist" },
-      { "name": "mrpunyapal/peststan",                   "url": "https://packagist.org/packages/mrpunyapal/peststan",                   "registry": "packagist" },
-      { "name": "mrpunyapal/php-2fa",                    "url": "https://packagist.org/packages/mrpunyapal/php-2fa",                    "registry": "packagist" },
-      { "name": "mrpunyapal/rector-pest",                "url": "https://packagist.org/packages/mrpunyapal/rector-pest",                "registry": "packagist" },
-      { "name": "laravel-extended-relationships",        "url": "https://packagist.org/packages/mr-punyapal/laravel-extended-relationships",        "registry": "github"    }
-    ],
-    "website": "https://mrpunyapal.dev",
-    "twitter": "MrPunyapal",
-    "blog": "https://mrpunyapal.dev/talks",
-    "openSource": [
-      { "name": "OSSForAll/I-AM-CONTRIBUTOR", "url": "https://github.com/OSSForAll/I-AM-CONTRIBUTOR" }
-    ],
-    "linkedin": "mrpunyapal"
-  }
-]
-
+{
+  "github": "MadinBloch",
+  "name": "Madin Bloch Mustakbhai",
+  "category": "Intermediate",
+  "intro": "My Name is Madin Bloch , I am a Laravel Developer with 1.5 Years of experience. I have worked on various projects using Laravel and have a strong understanding of PHP and JavaScript.",
+  "techStack": ["PHP", "Laravel", "JavaScript", "Livewire", "Tailwind CSS"],
+  "packages": [
+    { "name": "MyPersonalwebsite", "url": "https://madinbloch.vercel.app/", "registry": "packagist" }
+  ],
+  "website": "https://madinbloch.vercel.app/",
+  "twitter": "yourhandle",
+  "blog": "madinbloch.hashnode.dev",
+  "youtube": "https://www.youtube.com/@madinbloch0633/videos",
+  "linkedin": "https://www.linkedin.com/in/madin-bloch/",
+  "openSource": [
+    { "name": "org/repo", "url": "https://github.com/MadinBloch" }
+  ]
+}
