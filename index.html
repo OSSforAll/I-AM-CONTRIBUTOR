@@ -1,0 +1,408 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Wall of Fame · I-AM-CONTRIBUTOR</title>
+  <meta name="description" content="A living directory of developers who took their first step into the world of Open Source." />
+  <meta property="og:title" content="Wall of Fame · I-AM-CONTRIBUTOR" />
+  <meta property="og:description" content="A living directory of developers who took their first step into Open Source." />
+  <meta property="og:type" content="website" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          keyframes: {
+            slideUp: {
+              '0%': { opacity: '0', transform: 'translateY(16px)' },
+              '100%': { opacity: '1', transform: 'translateY(0)' }
+            },
+            fadeIn: {
+              '0%': { opacity: '0' },
+              '100%': { opacity: '1' }
+            }
+          },
+          animation: {
+            'slide-up': 'slideUp 0.35s ease-out both',
+            'fade-in': 'fadeIn 0.4s ease-out both'
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: #0f172a; }
+    ::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
+    ::-webkit-scrollbar-thumb:hover { background: #7c3aed; }
+  </style>
+</head>
+<body class="bg-slate-950 text-white min-h-screen antialiased">
+
+  <!-- ── Hero Header ─────────────────────────────────────── -->
+  <header class="relative overflow-hidden bg-gradient-to-br from-slate-900 via-purple-950 to-slate-900 pt-14 pb-20">
+    <!-- decorative blobs -->
+    <div class="absolute inset-0 pointer-events-none" aria-hidden="true">
+      <div class="absolute -top-10 left-1/4 w-72 h-72 bg-purple-600 rounded-full opacity-20 blur-3xl"></div>
+      <div class="absolute bottom-0 right-1/4 w-96 h-96 bg-indigo-600 rounded-full opacity-15 blur-3xl"></div>
+    </div>
+
+    <div class="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+      <div class="text-5xl mb-3 select-none">🏆</div>
+      <h1 class="text-4xl sm:text-5xl lg:text-6xl font-black tracking-tight mb-4">
+        <span class="bg-clip-text text-transparent bg-gradient-to-r from-purple-400 via-pink-400 to-indigo-400">
+          Wall of Fame
+        </span>
+      </h1>
+      <p class="text-slate-300 text-base sm:text-lg max-w-xl mx-auto mb-10">
+        A living directory of developers who took their first step into the world of Open Source.
+      </p>
+
+      <!-- Stats bar -->
+      <div class="flex flex-wrap justify-center gap-4 animate-fade-in">
+        <div class="bg-white/10 backdrop-blur-md rounded-2xl px-6 py-3 border border-white/15">
+          <p class="text-2xl font-black text-white" id="stat-contributors">—</p>
+          <p class="text-xs text-slate-400 uppercase tracking-widest mt-0.5">Contributors</p>
+        </div>
+        <div class="bg-white/10 backdrop-blur-md rounded-2xl px-6 py-3 border border-white/15">
+          <p class="text-2xl font-black text-white" id="stat-categories">—</p>
+          <p class="text-xs text-slate-400 uppercase tracking-widest mt-0.5">Categories</p>
+        </div>
+        <div class="bg-white/10 backdrop-blur-md rounded-2xl px-6 py-3 border border-white/15">
+          <p class="text-2xl font-black text-white" id="stat-techs">—</p>
+          <p class="text-xs text-slate-400 uppercase tracking-widest mt-0.5">Technologies</p>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- ── Main ──────────────────────────────────────────────── -->
+  <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
+
+    <!-- Filter panel -->
+    <div class="bg-slate-900/70 backdrop-blur-sm border border-slate-800 rounded-2xl p-6 mb-8 animate-fade-in">
+
+      <!-- Search -->
+      <div class="relative mb-6">
+        <svg class="absolute left-4 top-1/2 -translate-y-1/2 w-4.5 h-4.5 text-slate-400 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+        </svg>
+        <input
+          type="text"
+          id="search"
+          placeholder="Search by name, intro, or tech stack…"
+          class="w-full bg-slate-800 border border-slate-700 rounded-xl pl-11 pr-4 py-3 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500 transition-colors"
+          autocomplete="off"
+        />
+      </div>
+
+      <!-- Category filter -->
+      <div class="mb-5">
+        <p class="text-xs font-semibold text-slate-400 uppercase tracking-widest mb-3">Category</p>
+        <div id="category-filters" class="flex flex-wrap gap-2"></div>
+      </div>
+
+      <!-- Tech stack filter -->
+      <div>
+        <p class="text-xs font-semibold text-slate-400 uppercase tracking-widest mb-3">Tech Stack</p>
+        <div id="tech-filters" class="flex flex-wrap gap-2"></div>
+      </div>
+    </div>
+
+    <!-- Result count + clear -->
+    <div class="flex items-center justify-between mb-6">
+      <p class="text-slate-400 text-sm">
+        <span id="result-count" class="text-white font-semibold">0</span> contributor<span id="result-plural">s</span> found
+      </p>
+      <button
+        id="clear-btn"
+        class="hidden text-sm text-purple-400 hover:text-purple-300 transition-colors focus:outline-none"
+      >
+        ✕ Clear filters
+      </button>
+    </div>
+
+    <!-- Grid -->
+    <div id="grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5"></div>
+
+    <!-- Empty state -->
+    <div id="empty" class="hidden text-center py-24">
+      <div class="text-5xl mb-4">🔍</div>
+      <h3 class="text-lg font-semibold text-white mb-2">No contributors found</h3>
+      <p class="text-slate-500 text-sm">Try a different search or filter combination.</p>
+    </div>
+
+    <!-- Loading skeleton (shown until data loads) -->
+    <div id="loading" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
+      <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 animate-pulse h-56"></div>
+      <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 animate-pulse h-56"></div>
+      <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 animate-pulse h-56"></div>
+      <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 animate-pulse h-56"></div>
+    </div>
+
+  </main>
+
+  <!-- ── Footer ─────────────────────────────────────────────── -->
+  <footer class="border-t border-slate-800/60 mt-16 py-8">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center text-slate-500 text-sm">
+      <p>
+        Built with ❤️ by
+        <a href="https://github.com/OSSForAll" target="_blank" rel="noopener" class="text-purple-400 hover:text-purple-300 transition-colors">OSSForAll</a>
+        ·
+        <a href="https://github.com/OSSForAll/I-AM-CONTRIBUTOR" target="_blank" rel="noopener" class="text-purple-400 hover:text-purple-300 transition-colors">Add yourself →</a>
+      </p>
+    </div>
+  </footer>
+
+  <!-- ── Script ─────────────────────────────────────────────── -->
+  <script>
+    /**
+     * App state
+     * @type {Array<{name: string, category: string, intro: string, techStack: Array<string>, github: string, githubUrl: string}>}
+     */
+    let contributors = [];
+    let activeCategory = 'All';
+    /** @type {Set<string>} */
+    let activeTechs = new Set();
+    let searchQuery = '';
+
+    // ── Colour palettes ──────────────────────────────────────
+
+    /** @type {Object<string, string>} */
+    const CATEGORY_COLORS = {
+      Maintainer:   'bg-purple-500/20 text-purple-300 border-purple-500/40',
+      Beginner:     'bg-green-500/20  text-green-300  border-green-500/40',
+      Intermediate: 'bg-blue-500/20   text-blue-300   border-blue-500/40',
+      Advanced:     'bg-orange-500/20 text-orange-300 border-orange-500/40',
+    };
+    const DEFAULT_CATEGORY_COLOR = 'bg-slate-500/20 text-slate-300 border-slate-500/40';
+
+    /** @type {Array<string>} */
+    const TECH_PALETTE = [
+      'bg-sky-500/20     text-sky-300     border-sky-500/40',
+      'bg-emerald-500/20 text-emerald-300 border-emerald-500/40',
+      'bg-amber-500/20   text-amber-300   border-amber-500/40',
+      'bg-rose-500/20    text-rose-300    border-rose-500/40',
+      'bg-violet-500/20  text-violet-300  border-violet-500/40',
+      'bg-teal-500/20    text-teal-300    border-teal-500/40',
+      'bg-pink-500/20    text-pink-300    border-pink-500/40',
+      'bg-indigo-500/20  text-indigo-300  border-indigo-500/40',
+      'bg-cyan-500/20    text-cyan-300    border-cyan-500/40',
+      'bg-lime-500/20    text-lime-300    border-lime-500/40',
+    ];
+    /** @type {Object<string, string>} */
+    const techColorMap = {};
+    let techColorIndex = 0;
+
+    /**
+     * Returns a consistent colour class for a given tech string.
+     * @param {string} tech
+     * @returns {string}
+     */
+    function techColor(tech) {
+      if (!techColorMap[tech]) {
+        techColorMap[tech] = TECH_PALETTE[techColorIndex++ % TECH_PALETTE.length];
+      }
+      return techColorMap[tech];
+    }
+
+    /**
+     * Returns category colour class or the default.
+     * @param {string} cat
+     * @returns {string}
+     */
+    function categoryColor(cat) {
+      return CATEGORY_COLORS[cat] ?? DEFAULT_CATEGORY_COLOR;
+    }
+
+    // ── Render helpers ───────────────────────────────────────
+
+    function updateStats() {
+      const cats  = new Set(contributors.map(c => c.category));
+      const techs = new Set(contributors.flatMap(c => c.techStack));
+      document.getElementById('stat-contributors').textContent = contributors.length;
+      document.getElementById('stat-categories').textContent   = cats.size;
+      document.getElementById('stat-techs').textContent        = techs.size;
+    }
+
+    function renderCategoryFilters() {
+      const categories = ['All', ...new Set(contributors.map(c => c.category))];
+      document.getElementById('category-filters').innerHTML = categories.map(cat => {
+        const active = cat === activeCategory;
+        return `<button
+          onclick="setCategory('${cat}')"
+          class="px-4 py-1.5 rounded-xl text-sm font-medium border transition-all cursor-pointer
+            ${active
+              ? 'bg-purple-600 text-white border-purple-500 shadow-lg shadow-purple-500/25'
+              : 'bg-slate-800 text-slate-300 border-slate-700 hover:border-purple-500/70 hover:text-white'
+            }"
+          data-category="${cat}">${cat}</button>`;
+      }).join('');
+    }
+
+    function renderTechFilters() {
+      const techs = [...new Set(contributors.flatMap(c => c.techStack))].sort();
+      document.getElementById('tech-filters').innerHTML = techs.map(tech => {
+        const active = activeTechs.has(tech);
+        return `<button
+          onclick="toggleTech('${tech}')"
+          class="px-3 py-1 rounded-lg text-xs font-medium border transition-all cursor-pointer
+            ${active
+              ? techColor(tech) + ' ring-1 ring-current'
+              : 'bg-slate-800 text-slate-400 border-slate-700 hover:text-white hover:border-slate-500'
+            }"
+          data-tech="${tech}">${tech}</button>`;
+      }).join('');
+    }
+
+    /**
+     * Returns contributors that match current search + filters.
+     * @returns {Array<{name: string, category: string, intro: string, techStack: Array<string>, github: string, githubUrl: string}>}
+     */
+    function filtered() {
+      return contributors.filter(c => {
+        const q = searchQuery;
+        const matchSearch = !q
+          || c.name.toLowerCase().includes(q)
+          || c.intro.toLowerCase().includes(q)
+          || c.techStack.some(t => t.toLowerCase().includes(q));
+        const matchCat  = activeCategory === 'All' || c.category === activeCategory;
+        const matchTech = activeTechs.size === 0
+          || [...activeTechs].every(t => c.techStack.includes(t));
+        return matchSearch && matchCat && matchTech;
+      });
+    }
+
+    /**
+     * Renders contributor cards from a filtered list.
+     * @param {Array<{name: string, category: string, intro: string, techStack: Array<string>, github: string, githubUrl: string}>} list
+     */
+    function renderCards(list) {
+      const grid  = document.getElementById('grid');
+      const empty = document.getElementById('empty');
+      const count = document.getElementById('result-count');
+      const plural = document.getElementById('result-plural');
+
+      count.textContent  = list.length;
+      plural.textContent = list.length === 1 ? '' : 's';
+
+      if (list.length === 0) {
+        grid.innerHTML = '';
+        empty.classList.remove('hidden');
+        return;
+      }
+      empty.classList.add('hidden');
+
+      grid.innerHTML = list.map((c, i) => `
+        <article
+          class="group flex flex-col gap-4 bg-slate-900 border border-slate-800 rounded-2xl p-5
+                 hover:border-purple-500/50 hover:shadow-xl hover:shadow-purple-500/10
+                 transition-all duration-300 animate-slide-up"
+          style="animation-delay:${i * 40}ms"
+        >
+          <!-- Avatar + name + category -->
+          <div class="flex items-center gap-3">
+            <img
+              src="https://github.com/${c.github}.png?size=80"
+              alt="${c.name}"
+              loading="lazy"
+              class="w-12 h-12 rounded-full ring-2 ring-slate-700 group-hover:ring-purple-500/60 transition-all shrink-0"
+              onerror="this.src='https://ui-avatars.com/api/?name=${encodeURIComponent(c.name)}&background=6d28d9&color=fff&size=80'"
+            />
+            <div class="min-w-0">
+              <h3 class="font-semibold text-white text-sm truncate">${c.name}</h3>
+              <span class="inline-block mt-1 px-2 py-0.5 rounded-md text-xs font-medium border ${categoryColor(c.category)}">${c.category}</span>
+            </div>
+          </div>
+
+          <!-- Intro -->
+          <p class="text-slate-400 text-sm leading-relaxed flex-1 line-clamp-3">${c.intro}</p>
+
+          <!-- Tech stack -->
+          <div class="flex flex-wrap gap-1.5">
+            ${c.techStack.map(t => `
+              <span class="px-2 py-0.5 rounded-md text-xs font-medium border ${techColor(t)}">${t}</span>
+            `).join('')}
+          </div>
+
+          <!-- GitHub link -->
+          <a
+            href="${c.githubUrl}"
+            target="_blank"
+            rel="noopener noreferrer"
+            class="flex items-center justify-center gap-2 w-full rounded-xl py-2 text-sm font-medium
+                   bg-slate-800 border border-slate-700 text-slate-300
+                   hover:bg-purple-600 hover:border-purple-500 hover:text-white
+                   transition-all duration-200"
+          >
+            <svg class="w-4 h-4 shrink-0" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M12 .5C5.73.5.5 5.73.5 12c0 5.08 3.29 9.38 7.86 10.9.57.1.78-.25.78-.55v-1.93c-3.2.7-3.87-1.54-3.87-1.54-.52-1.33-1.28-1.69-1.28-1.69-1.04-.72.08-.7.08-.7 1.15.08 1.76 1.18 1.76 1.18 1.02 1.75 2.68 1.25 3.34.95.1-.74.4-1.25.72-1.54-2.55-.29-5.23-1.28-5.23-5.68 0-1.25.45-2.28 1.18-3.08-.12-.29-.51-1.46.11-3.04 0 0 .96-.31 3.15 1.18A10.95 10.95 0 0112 6.84c.97.004 1.95.13 2.86.38 2.19-1.49 3.15-1.18 3.15-1.18.62 1.58.23 2.75.11 3.04.74.8 1.18 1.83 1.18 3.08 0 4.41-2.69 5.38-5.25 5.67.42.36.79 1.07.79 2.15v3.19c0 .31.21.66.79.55C20.22 21.38 23.5 17.08 23.5 12 23.5 5.73 18.27.5 12 .5z"/>
+            </svg>
+            View Profile
+          </a>
+        </article>
+      `).join('');
+    }
+
+    // ── Filter actions ───────────────────────────────────────
+
+    function applyFilters() {
+      renderCategoryFilters();
+      renderTechFilters();
+      renderCards(filtered());
+      const hasFilters = activeCategory !== 'All' || activeTechs.size > 0 || searchQuery;
+      document.getElementById('clear-btn').classList.toggle('hidden', !hasFilters);
+    }
+
+    /** @param {string} cat */
+    function setCategory(cat) {
+      activeCategory = cat;
+      applyFilters();
+    }
+
+    /** @param {string} tech */
+    function toggleTech(tech) {
+      activeTechs.has(tech) ? activeTechs.delete(tech) : activeTechs.add(tech);
+      applyFilters();
+    }
+
+    // ── Event listeners ──────────────────────────────────────
+
+    document.getElementById('search').addEventListener('input', e => {
+      searchQuery = e.target.value.toLowerCase().trim();
+      applyFilters();
+    });
+
+    document.getElementById('clear-btn').addEventListener('click', () => {
+      activeCategory = 'All';
+      activeTechs.clear();
+      searchQuery = '';
+      document.getElementById('search').value = '';
+      applyFilters();
+    });
+
+    // ── Bootstrap ────────────────────────────────────────────
+
+    fetch('contributors.json')
+      .then(r => {
+        if (!r.ok) throw new Error(`HTTP ${r.status}`);
+        return r.json();
+      })
+      .then(data => {
+        document.getElementById('loading').remove();
+        contributors = data;
+        updateStats();
+        applyFilters();
+      })
+      .catch(() => {
+        document.getElementById('loading').remove();
+        document.getElementById('grid').innerHTML = `
+          <div class="col-span-full text-center py-24">
+            <div class="text-4xl mb-4">⚠️</div>
+            <p class="text-slate-400 text-sm">Could not load contributors.json.</p>
+          </div>`;
+      });
+  </script>
+</body>
+</html>
