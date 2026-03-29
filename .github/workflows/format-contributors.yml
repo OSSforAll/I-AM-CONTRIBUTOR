@@ -1,0 +1,39 @@
+name: Format contributors.json
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - contributors.json
+
+jobs:
+  format:
+    name: Format contributors.json
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Format contributors.json
+        run: |
+          node -e "
+            const fs = require('fs');
+            const file = 'contributors.json';
+            const data = JSON.parse(fs.readFileSync(file, 'utf8'));
+            fs.writeFileSync(file, JSON.stringify(data, null, 2) + '\n');
+          "
+
+      - name: Commit if changed
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add contributors.json
+          git diff --cached --quiet || git commit -m "chore: format contributors.json [skip ci]"
+          git push

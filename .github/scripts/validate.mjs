@@ -1,4 +1,4 @@
-#!/usr/bin/env node
+﻿#!/usr/bin/env node
 // @ts-check
 import { readFileSync } from 'fs';
 import { resolve } from 'path';

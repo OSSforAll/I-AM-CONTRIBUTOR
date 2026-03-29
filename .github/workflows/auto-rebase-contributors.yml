@@ -1,0 +1,312 @@
+﻿name: Auto-rebase contributors.json
+
+# SECURITY: scripts are always executed from the base repo, never from forks.
+# Only the contributors.json *data file* is read from PR branches.
+
+on:
+  pull_request_target:
+    types: [opened, synchronize, reopened]
+  push:
+    branches:
+      - main
+    paths:
+      - contributors.json
+
+jobs:
+  # ── Rebase the PR branch that just opened / was updated ──────────────────────
+  rebase-pr:
+    name: Rebase PR branch against main
+    if: github.event_name == 'pull_request_target'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Rebase via Git Database API
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { spawnSync } = require('child_process');
+            const fs = require('fs');
+            const pr = context.payload.pull_request;
+            const { owner, repo } = context.repo;
+
+            // 1. Check if contributors.json is in this PR's changed files
+            const { data: changedFiles } = await github.rest.pulls.listFiles({
+              owner, repo, pull_number: pr.number, per_page: 100
+            });
+            if (!changedFiles.some(f => f.filename === 'contributors.json')) {
+              core.info('contributors.json not changed in this PR — skipping.');
+              return;
+            }
+
+            const forkOwner    = pr.head.repo?.owner?.login;
+            const forkRepoName = pr.head.repo?.name;
+            const prBranch     = pr.head.ref;
+            if (!forkOwner || !forkRepoName) {
+              core.setFailed('Could not determine fork repo.');
+              return;
+            }
+
+            // 2. Get main's current HEAD
+            const { data: mainRef } = await github.rest.git.getRef({ owner, repo, ref: 'heads/main' });
+            const mainSha = mainRef.object.sha;
+
+            // 3. Get fork branch HEAD — if it already has mainSha as a parent we already merged, skip.
+            //    This also prevents an infinite loop when our own merge commit triggers synchronize.
+            const { data: forkRef } = await github.rest.git.getRef({
+              owner: forkOwner, repo: forkRepoName, ref: `heads/${prBranch}`
+            });
+            const forkSha = forkRef.object.sha;
+            const { data: forkHead } = await github.rest.git.getCommit({
+              owner: forkOwner, repo: forkRepoName, commit_sha: forkSha
+            });
+            if (forkHead.parents.some(p => p.sha === mainSha)) {
+              core.info('Fork branch already includes current main — nothing to do.');
+              return;
+            }
+
+            // 4. Fetch the PR contributors.json (read-only — no fork code runs)
+            const run = (cmd, args) => {
+              const r = spawnSync(cmd, args, { encoding: 'utf8' });
+              if (r.status !== 0) throw new Error(`${cmd} ${args.join(' ')}\n${r.stderr}`);
+              return r.stdout;
+            };
+            run('git', ['fetch', 'origin', `refs/pull/${pr.number}/head`, '--depth=1']);
+            const prContent = run('git', ['show', 'FETCH_HEAD:contributors.json']);
+            fs.writeFileSync('/tmp/pr-contributors.json', prContent);
+
+            // 5. Compute conflict-free merged content
+            const merged = run('node', [
+              '.github/scripts/merge-contributors.mjs',
+              'contributors.json',
+              '/tmp/pr-contributors.json'
+            ]);
+
+            // 6. Build a merge commit in the fork repo using the Git Database API.
+            //
+            //    Parents: [forkSha, mainSha]
+            //    - forkSha as parent[0] → fast-forward from the fork branch (no force push)
+            //    - mainSha as parent[1] → GitHub's PR merge base becomes main's HEAD → no conflict
+            //
+            //    The tree is based on main's tree + updated contributors.json,
+            //    so the PR diff shows only the contributor's new entries.
+
+            const { data: mainCommit } = await github.rest.git.getCommit({ owner, repo, commit_sha: mainSha });
+
+            const { data: blob } = await github.rest.git.createBlob({
+              owner: forkOwner, repo: forkRepoName,
+              content: Buffer.from(merged).toString('base64'),
+              encoding: 'base64'
+            });
+            const { data: newTree } = await github.rest.git.createTree({
+              owner: forkOwner, repo: forkRepoName,
+              base_tree: mainCommit.tree.sha,
+              tree: [{ path: 'contributors.json', mode: '100644', type: 'blob', sha: blob.sha }]
+            });
+            const { data: mergeCommit } = await github.rest.git.createCommit({
+              owner: forkOwner, repo: forkRepoName,
+              message: 'chore: merge main into branch to resolve conflict [skip ci]',
+              tree: newTree.sha,
+              parents: [forkSha, mainSha]
+            });
+
+            // 7. Fast-forward the fork branch (merge commit is a child of forkSha — no force needed)
+            await github.rest.git.updateRef({
+              owner: forkOwner, repo: forkRepoName,
+              ref: `heads/${prBranch}`,
+              sha: mergeCommit.sha,
+              force: false
+            });
+
+            core.info(`PR #${pr.number}: Merge commit ${mergeCommit.sha.slice(0,7)} created — conflict resolved.`);
+
+      - name: Post comment if rebase failed
+        if: failure()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { spawnSync } = require('child_process');
+            const fs = require('fs');
+            const pr = context.payload.pull_request;
+            try {
+              const run = (cmd, args) => spawnSync(cmd, args, { encoding: 'utf8' }).stdout;
+              run('git', ['fetch', 'origin', `refs/pull/${pr.number}/head`, '--depth=1']);
+              fs.writeFileSync('/tmp/pr-fb.json', run('git', ['show', 'FETCH_HEAD:contributors.json']));
+              const merged = run('node', [
+                '.github/scripts/merge-contributors.mjs',
+                'contributors.json', '/tmp/pr-fb.json'
+              ]).trim();
+              const { data: comments } = await github.rest.issues.listComments({
+                ...context.repo, issue_number: pr.number, per_page: 100
+              });
+              const bot = comments.find(
+                c => c.user?.login === 'github-actions[bot]' && c.body?.includes('<!-- auto-rebase-bot -->')
+              );
+              const body = [
+                "<!-- auto-rebase-bot -->",
+                "⚠️ I couldn't automatically resolve the conflict on your branch.",
+                "",
+                "Please make sure **Allow edits from maintainers** is enabled on your PR, then close and reopen it.",
+                "",
+                "Or manually replace your `contributors.json` with the content below and push:",
+                "", "```json", merged, "```"
+              ].join('\n');
+              if (bot) {
+                await github.rest.issues.updateComment({ ...context.repo, comment_id: bot.id, body });
+              } else {
+                await github.rest.issues.createComment({ ...context.repo, issue_number: pr.number, body });
+              }
+            } catch (e) {
+              core.warning(`Could not post comment: ${e.message}`);
+            }
+
+  # ── After a merge to main: sync ALL open PRs that touch contributors.json ─────
+  sync-open-prs:
+    name: Sync all open PRs after merge to main
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Rebase all open PRs touching contributors.json
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { spawnSync } = require('child_process');
+            const fs = require('fs');
+            const { owner, repo } = context.repo;
+
+            const run = (cmd, args) => {
+              const r = spawnSync(cmd, args, { encoding: 'utf8' });
+              if (r.status !== 0) throw new Error(`${cmd} ${args.join(' ')}\n${r.stderr}`);
+              return r.stdout;
+            };
+
+            // Get main's HEAD once — shared across all PRs in this run
+            const { data: mainRef } = await github.rest.git.getRef({ owner, repo, ref: 'heads/main' });
+            const mainSha = mainRef.object.sha;
+            const { data: mainCommit } = await github.rest.git.getCommit({ owner, repo, commit_sha: mainSha });
+
+            const prs = await github.paginate(github.rest.pulls.list, {
+              owner, repo, state: 'open', base: 'main', per_page: 100
+            });
+
+            for (const pr of prs) {
+              const { data: changedFiles } = await github.rest.pulls.listFiles({
+                owner, repo, pull_number: pr.number, per_page: 100
+              });
+              if (!changedFiles.some(f => f.filename === 'contributors.json')) continue;
+
+              const forkOwner    = pr.head.repo?.owner?.login;
+              const forkRepoName = pr.head.repo?.name;
+              const prBranch     = pr.head.ref;
+              if (!forkOwner || !forkRepoName) continue;
+
+              core.info(`Processing PR #${pr.number} (${forkOwner}/${forkRepoName}/${prBranch})…`);
+
+              try {
+                // Skip if fork branch already includes main's HEAD
+                const { data: forkRef } = await github.rest.git.getRef({
+                  owner: forkOwner, repo: forkRepoName, ref: `heads/${prBranch}`
+                });
+                const forkSha = forkRef.object.sha;
+                const { data: forkHead } = await github.rest.git.getCommit({
+                  owner: forkOwner, repo: forkRepoName, commit_sha: forkSha
+                });
+                if (forkHead.parents.some(p => p.sha === mainSha)) {
+                  core.info(`PR #${pr.number}: Already includes current main — skipping.`);
+                  continue;
+                }
+
+                // Fetch PR contributors.json (read-only)
+                run('git', ['fetch', 'origin', `refs/pull/${pr.number}/head`, '--depth=1']);
+                const prContent = run('git', ['show', 'FETCH_HEAD:contributors.json']);
+                const prFile = `/tmp/pr-${pr.number}.json`;
+                fs.writeFileSync(prFile, prContent);
+
+                // Compute conflict-free merged content
+                const merged = run('node', [
+                  '.github/scripts/merge-contributors.mjs', 'contributors.json', prFile
+                ]);
+
+                // Build merge commit in the fork repo
+                const { data: blob } = await github.rest.git.createBlob({
+                  owner: forkOwner, repo: forkRepoName,
+                  content: Buffer.from(merged).toString('base64'), encoding: 'base64'
+                });
+                const { data: newTree } = await github.rest.git.createTree({
+                  owner: forkOwner, repo: forkRepoName,
+                  base_tree: mainCommit.tree.sha,
+                  tree: [{ path: 'contributors.json', mode: '100644', type: 'blob', sha: blob.sha }]
+                });
+                const { data: mergeCommit } = await github.rest.git.createCommit({
+                  owner: forkOwner, repo: forkRepoName,
+                  message: 'chore: merge main into branch to resolve conflict [skip ci]',
+                  tree: newTree.sha,
+                  parents: [forkSha, mainSha]
+                });
+                await github.rest.git.updateRef({
+                  owner: forkOwner, repo: forkRepoName,
+                  ref: `heads/${prBranch}`,
+                  sha: mergeCommit.sha,
+                  force: false
+                });
+                core.info(`PR #${pr.number}: Merge commit ${mergeCommit.sha.slice(0,7)} — conflict resolved.`);
+
+              } catch (e) {
+                core.warning(`PR #${pr.number}: Failed — ${e.message}`);
+
+                // Fallback: post a comment with the correct content to copy-paste
+                try {
+                  run('git', ['fetch', 'origin', `refs/pull/${pr.number}/head`, '--depth=1']);
+                  fs.writeFileSync(`/tmp/pr-fb-${pr.number}.json`,
+                    run('git', ['show', 'FETCH_HEAD:contributors.json']));
+                  const merged2 = run('node', [
+                    '.github/scripts/merge-contributors.mjs', 'contributors.json',
+                    `/tmp/pr-fb-${pr.number}.json`
+                  ]).trim();
+                  const { data: comments } = await github.rest.issues.listComments({
+                    owner, repo, issue_number: pr.number, per_page: 100
+                  });
+                  const bot = comments.find(
+                    c => c.user?.login === 'github-actions[bot]' && c.body?.includes('<!-- auto-rebase-bot -->')
+                  );
+                  const body = [
+                    "<!-- auto-rebase-bot -->",
+                    "⚠️ Another PR was merged that also changed `contributors.json`. I couldn't automatically update your branch.",
+                    "",
+                    "Please make sure **Allow edits from maintainers** is enabled, then close and reopen this PR.",
+                    "",
+                    "Or manually replace your `contributors.json` with the content below and push:",
+                    "", "```json", merged2, "```"
+                  ].join('\n');
+                  if (bot) {
+                    await github.rest.issues.updateComment({ owner, repo, comment_id: bot.id, body });
+                  } else {
+                    await github.rest.issues.createComment({ owner, repo, issue_number: pr.number, body });
+                  }
+                } catch (e2) {
+                  core.warning(`PR #${pr.number}: Could not post comment — ${e2.message}`);
+                }
+              }
+            }
