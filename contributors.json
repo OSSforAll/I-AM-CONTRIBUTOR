@@ -21,9 +21,18 @@
       { "name": "OSSForAll/I-AM-CONTRIBUTOR", "url": "https://github.com/OSSForAll/I-AM-CONTRIBUTOR" }
     ],
     "linkedin": "mrpunyapal"
-  },{
-    "github":"sonalidudhia",
-    "name":"sonali dudhia"
   }
+  {
+      "github": "imdeepaksuthar",
+      "name": "Deepak Suthar",
+      "category": "Maintainer",
+      "intro": "Building communities, content & tools for the PHP & Laravel ecosystem.",
+      "techStack": ["Laravel", "PHP", "JavaScript"],
+      "twitter": "deepak_suthar14",
+      "openSource": [
+        { "name": "OSSForAll/I-AM-CONTRIBUTOR", "url": "https://github.com/OSSForAll/I-AM-CONTRIBUTOR" }
+      ],
+      "linkedin": "imdeepaksuthar"
+    }
 ]
 
