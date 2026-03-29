@@ -1,20 +1,224 @@
 name: Auto-rebase contributors.json
 
-# pull_request_target runs with base-repo permissions even for fork PRs,
-# which lets us push back to the PR branch when "Allow edits from maintainers"
-# is enabled (the GitHub default).
-#
-# SECURITY: we only *read* contributors.json from the PR (plain data).
-# All scripts executed come from the base repo — never from the fork.
+# SECURITY: scripts are always executed from the base repo, never from forks.
+# Only the contributors.json *data file* is read from PR branches.
 
 on:
+  # Fires when a contributor opens or updates their own PR branch.
   pull_request_target:
     types: [opened, synchronize, reopened]
     paths:
       - contributors.json
 
+  # Fires when any PR is merged to main — catches all other open PRs that are now outdated.
+  push:
+    branches:
+      - main
+    paths:
+      - contributors.json
+
 jobs:
-  rebase:
+  # ── Rebase a single PR when the contributor pushes to their branch ────────────
+  rebase-pr:
+    name: Rebase PR branch against main
+    if: github.event_name == 'pull_request_target'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Fetch PR's contributors.json
+        run: |
+          git fetch origin "refs/pull/${{ github.event.pull_request.number }}/head" --depth=1
+          git show FETCH_HEAD:contributors.json > /tmp/pr-contributors.json
+
+      - name: Compute conflict-free merge
+        run: |
+          node .github/scripts/merge-contributors.mjs \
+            contributors.json \
+            /tmp/pr-contributors.json \
+            > /tmp/merged-contributors.json
+
+      - name: Push rebased file to PR branch
+        id: push
+        continue-on-error: true
+        env:
+          FORK_REPO: ${{ github.event.pull_request.head.repo.full_name }}
+          PR_BRANCH: ${{ github.event.pull_request.head.ref }}
+          GH_TOKEN:  ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git remote add fork "https://x-access-token:${GH_TOKEN}@github.com/${FORK_REPO}"
+          git fetch fork "${PR_BRANCH}" --depth=1
+          git checkout -b pr-work "fork/${PR_BRANCH}"
+          cp /tmp/merged-contributors.json contributors.json
+          git add contributors.json
+          if git diff --cached --quiet; then
+            echo "Already up to date — nothing to push."
+            exit 0
+          fi
+          git commit -m "chore: rebase contributors.json against main [skip ci]"
+          git push fork "HEAD:${PR_BRANCH}"
+
+      - name: Comment if push failed
+        if: steps.push.outcome == 'failure'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const merged = require('fs').readFileSync('/tmp/merged-contributors.json', 'utf8').trim();
+            await github.rest.issues.createComment({
+              ...context.repo,
+              issue_number: context.payload.pull_request.number,
+              body: [
+                "<!-- auto-rebase-bot -->",
+                "⚠️ I tried to automatically update your `contributors.json` against `main` but couldn't push to your branch.",
+                "",
+                "This usually means **Allow edits from maintainers** is turned off on your fork.",
+                "",
+                "**Easy fix:** replace the entire contents of your `contributors.json` with the following and push:",
+                "",
+                "```json",
+                merged,
+                "```"
+              ].join('\n')
+            });
+
+  # ── After a merge to main: rebase ALL open PRs that touch contributors.json ───
+  sync-open-prs:
+    name: Sync all open PRs after merge to main
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Rebase all open PRs touching contributors.json
+        uses: actions/github-script@v7
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          script: |
+            const { spawnSync } = require('child_process');
+            const fs = require('fs');
+            const { owner, repo } = context.repo;
+            const token = process.env.GH_TOKEN;
+
+            const run = (cmd, args, opts = {}) => {
+              const r = spawnSync(cmd, args, { encoding: 'utf8', ...opts });
+              if (r.status !== 0 && !opts.ignore) throw new Error(`${cmd} ${args.join(' ')}\n${r.stderr}`);
+              return r.stdout;
+            };
+
+            const prs = await github.paginate(github.rest.pulls.list, {
+              owner, repo, state: 'open', base: 'main', per_page: 100
+            });
+
+            for (const pr of prs) {
+              const { data: files } = await github.rest.pulls.listFiles({
+                owner, repo, pull_number: pr.number, per_page: 100
+              });
+              if (!files.some(f => f.filename === 'contributors.json')) continue;
+
+              const forkRepo  = pr.head.repo?.full_name;
+              const prBranch  = pr.head.ref;
+              if (!forkRepo) continue;
+
+              const [forkOwner, forkName] = forkRepo.split('/');
+              core.info(`Processing PR #${pr.number} (${forkRepo}/${prBranch})…`);
+
+              // Fetch the PR's contributors.json (read-only — always works)
+              run('git', ['fetch', 'origin', `refs/pull/${pr.number}/head`, '--depth=1']);
+              const prContent = run('git', ['show', 'FETCH_HEAD:contributors.json']);
+              const prFile = `/tmp/pr-${pr.number}.json`;
+              fs.writeFileSync(prFile, prContent);
+
+              // Compute conflict-free merge
+              const merged = run('node', [
+                '.github/scripts/merge-contributors.mjs',
+                'contributors.json',
+                prFile
+              ]);
+
+              // Try to push via GitHub Contents API
+              // Works if "Allow edits from maintainers" is enabled on the fork (GitHub default).
+              let pushed = false;
+              try {
+                const { data: existing } = await github.rest.repos.getContent({
+                  owner: forkOwner, repo: forkName,
+                  path: 'contributors.json', ref: prBranch
+                });
+                const current = Buffer.from(existing.content, 'base64').toString('utf8');
+                if (current.trim() === merged.trim()) {
+                  core.info(`PR #${pr.number}: Already up to date.`);
+                  pushed = true;
+                } else {
+                  await github.rest.repos.createOrUpdateFileContents({
+                    owner: forkOwner, repo: forkName,
+                    path: 'contributors.json',
+                    message: 'chore: rebase contributors.json against main [skip ci]',
+                    content: Buffer.from(merged).toString('base64'),
+                    sha: existing.sha,
+                    branch: prBranch
+                  });
+                  core.info(`PR #${pr.number}: Pushed via Contents API.`);
+                  pushed = true;
+                }
+              } catch (e) {
+                core.warning(`PR #${pr.number}: Contents API failed (${e.status ?? e.message}) — will fall back to comment.`);
+              }
+
+              if (pushed) continue;
+
+              // Fallback: post or update a bot comment with the merged content.
+              // Use a marker so we update instead of spamming new comments.
+              const { data: comments } = await github.rest.issues.listComments({
+                owner, repo, issue_number: pr.number, per_page: 100
+              });
+              const existing = comments.find(
+                c => c.user?.login === 'github-actions[bot]' && c.body?.includes('<!-- auto-rebase-bot -->')
+              );
+
+              const body = [
+                "<!-- auto-rebase-bot -->",
+                "⚠️ Another PR was just merged that also changed `contributors.json`. Your branch needs to be updated.",
+                "",
+                "I couldn't push directly to your branch (usually because **Allow edits from maintainers** is turned off).",
+                "",
+                "**Easy fix:** replace the entire contents of your `contributors.json` with the following and push:",
+                "",
+                "```json",
+                merged.trim(),
+                "```"
+              ].join('\n');
+
+              if (existing) {
+                await github.rest.issues.updateComment({ owner, repo, comment_id: existing.id, body });
+                core.info(`PR #${pr.number}: Updated existing bot comment.`);
+              } else {
+                await github.rest.issues.createComment({ owner, repo, issue_number: pr.number, body });
+                core.info(`PR #${pr.number}: Posted comment with merged content.`);
+              }
+            }
+
     name: Rebase contributors.json against main
     runs-on: ubuntu-latest
     permissions:
