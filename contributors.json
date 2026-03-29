@@ -37,7 +37,7 @@
   "youtube": "https://www.youtube.com/@madinbloch0633/videos",
   "linkedin": "https://www.linkedin.com/in/madin-bloch/",
   "openSource": [
-    { "name": "org/repo", "url": "https://github.com/MadinBloch" }
+    { "name": "/Node-Deploy-CICD-Docker", "url": "https://github.com/MadinBloch/Node-Deploy-CICD-Docker" }
   ]
 }
 ]
