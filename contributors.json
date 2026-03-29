@@ -21,6 +21,24 @@
       { "name": "OSSForAll/I-AM-CONTRIBUTOR", "url": "https://github.com/OSSForAll/I-AM-CONTRIBUTOR" }
     ],
     "linkedin": "mrpunyapal"
-  }
+  },
+  {
+  "github": "MadinBloch",
+  "name": "Madin Bloch Mustakbhai",
+  "category": "Intermediate",
+  "intro": "My Name is Madin Bloch , I am a Laravel Developer with 1.5 Years of experience. I have worked on various projects using Laravel and have a strong understanding of PHP and JavaScript.",
+  "techStack": ["PHP", "Laravel", "JavaScript", "Livewire", "Tailwind CSS"],
+  "packages": [
+    { "name": "MyPersonalwebsite", "url": "https://madinbloch.vercel.app/", "registry": "packagist" }
+  ],
+  "website": "https://madinbloch.vercel.app/",
+  "twitter": "yourhandle",
+  "blog": "madinbloch.hashnode.dev",
+  "youtube": "https://www.youtube.com/@madinbloch0633/videos",
+  "linkedin": "https://www.linkedin.com/in/madin-bloch/",
+  "openSource": [
+    { "name": "/Node-Deploy-CICD-Docker", "url": "https://github.com/MadinBloch/Node-Deploy-CICD-Docker" }
+  ]
+}
 ]
 
