@@ -35,80 +35,122 @@ jobs:
         with:
           node-version: '20'
 
-      - name: Check if contributors.json was changed in this PR
-        id: check
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          CHANGED=$(gh api repos/${{ github.repository }}/pulls/${{ github.event.pull_request.number }}/files \
-            --paginate --jq '[.[].filename] | contains(["contributors.json"])')
-          echo "changed=${CHANGED}" >> "$GITHUB_OUTPUT"
-
-      - name: Fetch PR contributors.json (read-only — no fork code executed)
-        if: steps.check.outputs.changed == 'true'
-        run: |
-          git fetch origin "refs/pull/${{ github.event.pull_request.number }}/head" --depth=1
-          git show FETCH_HEAD:contributors.json > /tmp/pr-contributors.json
-
-      - name: Compute conflict-free merge
-        if: steps.check.outputs.changed == 'true'
-        run: |
-          node .github/scripts/merge-contributors.mjs \
-            contributors.json \
-            /tmp/pr-contributors.json \
-            > /tmp/merged-contributors.json
-
-      - name: Force-push rebased commit onto PR branch
-        if: steps.check.outputs.changed == 'true'
-        id: push
-        continue-on-error: true
-        env:
-          FORK_REPO: ${{ github.event.pull_request.head.repo.full_name }}
-          PR_BRANCH: ${{ github.event.pull_request.head.ref }}
-          GH_TOKEN:  ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          git config user.name  "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-
-          # We are on main's HEAD. Apply the merged content here and commit.
-          # This creates a commit that is a direct child of main — no divergent history.
-          cp /tmp/merged-contributors.json contributors.json
-          git add contributors.json
-
-          if git diff --cached --quiet; then
-            echo "Already up to date — nothing to push."
-            exit 0
-          fi
-
-          git commit -m "chore: rebase contributors.json against main [skip ci]"
-
-          # Force-push this single clean commit onto the fork branch.
-          # Because it is based on main's HEAD, GitHub will see zero merge conflicts.
-          git remote add fork "https://x-access-token:${GH_TOKEN}@github.com/${FORK_REPO}"
-          git push fork "HEAD:refs/heads/${PR_BRANCH}" --force
-
-      - name: Comment if push failed
-        if: steps.check.outputs.changed == 'true' && steps.push.outcome == 'failure'
+      - name: Rebase via Contents API
         uses: actions/github-script@v7
         with:
           script: |
-            const merged = require('fs').readFileSync('/tmp/merged-contributors.json', 'utf8').trim();
-            await github.rest.issues.createComment({
-              ...context.repo,
-              issue_number: context.payload.pull_request.number,
-              body: [
-                "<!-- auto-rebase-bot -->",
-                "⚠️ I tried to automatically update your `contributors.json` against `main` but couldn't push to your branch.",
-                "",
-                "This usually means **Allow edits from maintainers** is turned off on your fork.",
-                "",
-                "**Easy fix:** replace the entire contents of your `contributors.json` with the following and push:",
-                "",
-                "```json",
-                merged,
-                "```"
-              ].join('\n')
+            const { spawnSync } = require('child_process');
+            const fs   = require('fs');
+            const pr   = context.payload.pull_request;
+            const { owner, repo } = context.repo;
+
+            // 1. Check if contributors.json is in the PR's changed files
+            const { data: files } = await github.rest.pulls.listFiles({
+              owner, repo, pull_number: pr.number, per_page: 100
             });
+            if (!files.some(f => f.filename === 'contributors.json')) {
+              core.info('contributors.json not changed in this PR — skipping.');
+              return;
+            }
+
+            const forkOwner = pr.head.repo?.owner?.login;
+            const forkRepo  = pr.head.repo?.name;
+            const prBranch  = pr.head.ref;
+            if (!forkOwner || !forkRepo) {
+              core.setFailed('Could not determine fork repo.');
+              return;
+            }
+
+            // 2. Fetch the PR's contributors.json (read-only, no fork code runs)
+            const run = (cmd, args) => {
+              const r = spawnSync(cmd, args, { encoding: 'utf8' });
+              if (r.status !== 0) throw new Error(`${cmd} ${args.join(' ')}\n${r.stderr}`);
+              return r.stdout;
+            };
+            run('git', ['fetch', 'origin', `refs/pull/${pr.number}/head`, '--depth=1']);
+            const prContent = run('git', ['show', 'FETCH_HEAD:contributors.json']);
+            fs.writeFileSync('/tmp/pr-contributors.json', prContent);
+
+            // 3. Compute conflict-free merge
+            const merged = run('node', [
+              '.github/scripts/merge-contributors.mjs',
+              'contributors.json',
+              '/tmp/pr-contributors.json'
+            ]);
+
+            // 4. Get the current file SHA from the fork branch (required by the API)
+            const { data: existing } = await github.rest.repos.getContent({
+              owner: forkOwner, repo: forkRepo,
+              path: 'contributors.json', ref: prBranch
+            });
+
+            const currentContent = Buffer.from(existing.content, 'base64').toString('utf8');
+            if (currentContent.trim() === merged.trim()) {
+              core.info('Already up to date — nothing to push.');
+              return;
+            }
+
+            // 5. Update the file via the Contents API.
+            //    This works whenever "Allow edits from maintainers" is on.
+            //    It adds a regular (non-force) commit on top of the fork branch's HEAD,
+            //    updating contributors.json to the merged content.
+            await github.rest.repos.createOrUpdateFileContents({
+              owner: forkOwner, repo: forkRepo,
+              path: 'contributors.json',
+              message: 'chore: rebase contributors.json against main [skip ci]',
+              content: Buffer.from(merged).toString('base64'),
+              sha: existing.sha,
+              branch: prBranch
+            });
+
+            core.info(`PR #${pr.number}: Updated contributors.json via Contents API.`);
+
+      - name: Post comment if API update not possible
+        if: failure()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { spawnSync } = require('child_process');
+            const fs = require('fs');
+            const pr = context.payload.pull_request;
+
+            const run = (cmd, args) => {
+              const r = spawnSync(cmd, args, { encoding: 'utf8' });
+              return r.stdout;
+            };
+            run('git', ['fetch', 'origin', `refs/pull/${pr.number}/head`, '--depth=1']);
+            const prContent = run('git', ['show', 'FETCH_HEAD:contributors.json']);
+            fs.writeFileSync('/tmp/pr-contributors.json', prContent);
+            const merged = run('node', [
+              '.github/scripts/merge-contributors.mjs',
+              'contributors.json',
+              '/tmp/pr-contributors.json'
+            ]).trim();
+
+            const { data: comments } = await github.rest.issues.listComments({
+              ...context.repo, issue_number: pr.number, per_page: 100
+            });
+            const bot = comments.find(
+              c => c.user?.login === 'github-actions[bot]' && c.body?.includes('<!-- auto-rebase-bot -->')
+            );
+            const body = [
+              "<!-- auto-rebase-bot -->",
+              "⚠️ I tried to automatically update your `contributors.json` against `main` but couldn't.",
+              "",
+              "Please make sure **Allow edits from maintainers** is enabled on your PR, then close and reopen it to trigger the bot again.",
+              "",
+              "Or manually replace your `contributors.json` with the content below and push:",
+              "",
+              "```json",
+              merged,
+              "```"
+            ].join('\n');
+
+            if (bot) {
+              await github.rest.issues.updateComment({ ...context.repo, comment_id: bot.id, body });
+            } else {
+              await github.rest.issues.createComment({ ...context.repo, issue_number: pr.number, body });
+            }
 
   # ── After a merge to main: sync ALL open PRs that touch contributors.json ─────
   sync-open-prs:
@@ -130,26 +172,17 @@ jobs:
 
       - name: Rebase all open PRs touching contributors.json
         uses: actions/github-script@v7
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           script: |
             const { spawnSync } = require('child_process');
             const fs = require('fs');
             const { owner, repo } = context.repo;
-            const token = process.env.GH_TOKEN;
 
             const run = (cmd, args) => {
               const r = spawnSync(cmd, args, { encoding: 'utf8' });
               if (r.status !== 0) throw new Error(`${cmd} ${args.join(' ')}\n${r.stderr}`);
               return r.stdout;
             };
-
-            run('git', ['config', 'user.name',  'github-actions[bot]']);
-            run('git', ['config', 'user.email', 'github-actions[bot]@users.noreply.github.com']);
-
-            // Remember main's HEAD so we can reset back to it between PRs.
-            const mainSha = run('git', ['rev-parse', 'HEAD']).trim();
 
             const prs = await github.paginate(github.rest.pulls.list, {
               owner, repo, state: 'open', base: 'main', per_page: 100
@@ -161,81 +194,77 @@ jobs:
               });
               if (!files.some(f => f.filename === 'contributors.json')) continue;
 
-              const forkRepo = pr.head.repo?.full_name;
-              const prBranch = pr.head.ref;
-              if (!forkRepo) continue;
+              const forkOwner = pr.head.repo?.owner?.login;
+              const forkRepo  = pr.head.repo?.name;
+              const prBranch  = pr.head.ref;
+              if (!forkOwner || !forkRepo) continue;
 
-              core.info(`Processing PR #${pr.number} (${forkRepo}/${prBranch})…`);
+              core.info(`Processing PR #${pr.number} (${forkOwner}/${forkRepo}/${prBranch})…`);
 
-              // Fetch only the data file — no fork code is executed
+              // Fetch only the data file — no fork code runs
               run('git', ['fetch', 'origin', `refs/pull/${pr.number}/head`, '--depth=1']);
               const prContent = run('git', ['show', 'FETCH_HEAD:contributors.json']);
               const prFile = `/tmp/pr-${pr.number}.json`;
               fs.writeFileSync(prFile, prContent);
 
-              // Compute conflict-free merge (main's entries + new entries from PR)
+              // Compute conflict-free merge
               const merged = run('node', [
                 '.github/scripts/merge-contributors.mjs',
                 'contributors.json',
                 prFile
               ]);
 
-              // Commit on top of main's HEAD (we are always at mainSha here)
-              fs.writeFileSync('contributors.json', merged);
-              run('git', ['add', 'contributors.json']);
-
-              const noDiff = spawnSync('git', ['diff', '--cached', '--quiet'], { encoding: 'utf8' });
-              if (noDiff.status === 0) {
-                core.info(`PR #${pr.number}: Already up to date.`);
-                run('git', ['restore', '--staged', 'contributors.json']);
-                continue;
-              }
-
-              run('git', ['commit', '-m', 'chore: rebase contributors.json against main [skip ci]']);
-
-              // Force-push this clean commit onto the fork branch.
-              // Because it is based on main's HEAD, there will be no merge conflict.
+              // Update via Contents API (works when "Allow edits from maintainers" is on)
               let pushed = false;
-              const remoteName = `fork-${pr.number}`;
-              const forkUrl = `https://x-access-token:${token}@github.com/${forkRepo}`;
               try {
-                run('git', ['remote', 'add', remoteName, forkUrl]);
-                run('git', ['push', remoteName, `HEAD:refs/heads/${prBranch}`, '--force']);
-                core.info(`PR #${pr.number}: Force-pushed rebased branch.`);
-                pushed = true;
+                const { data: existing } = await github.rest.repos.getContent({
+                  owner: forkOwner, repo: forkRepo,
+                  path: 'contributors.json', ref: prBranch
+                });
+                const current = Buffer.from(existing.content, 'base64').toString('utf8');
+                if (current.trim() === merged.trim()) {
+                  core.info(`PR #${pr.number}: Already up to date.`);
+                  pushed = true;
+                } else {
+                  await github.rest.repos.createOrUpdateFileContents({
+                    owner: forkOwner, repo: forkRepo,
+                    path: 'contributors.json',
+                    message: 'chore: rebase contributors.json against main [skip ci]',
+                    content: Buffer.from(merged).toString('base64'),
+                    sha: existing.sha,
+                    branch: prBranch
+                  });
+                  core.info(`PR #${pr.number}: Updated via Contents API.`);
+                  pushed = true;
+                }
               } catch (e) {
-                core.warning(`PR #${pr.number}: Push failed — ${e.message}`);
+                core.warning(`PR #${pr.number}: Contents API failed (${e.status ?? e.message})`);
               }
-
-              // Reset back to main's HEAD for the next PR in the loop
-              run('git', ['reset', '--hard', mainSha]);
 
               if (pushed) continue;
 
-              // Fallback: post/update a comment with the ready-to-paste content.
-              // The <!-- auto-rebase-bot --> marker prevents duplicate comments.
+              // Fallback: post/update a comment with ready-to-paste content
               const { data: comments } = await github.rest.issues.listComments({
                 owner, repo, issue_number: pr.number, per_page: 100
               });
-              const botComment = comments.find(
+              const bot = comments.find(
                 c => c.user?.login === 'github-actions[bot]' && c.body?.includes('<!-- auto-rebase-bot -->')
               );
-
               const body = [
                 "<!-- auto-rebase-bot -->",
                 "⚠️ Another PR was just merged that also changed `contributors.json`. Your branch needs to be updated.",
                 "",
-                "I couldn't push directly to your branch (usually because **Allow edits from maintainers** is turned off).",
+                "Please make sure **Allow edits from maintainers** is enabled on your PR, then close and reopen it to trigger the bot again.",
                 "",
-                "**Easy fix:** replace the entire contents of your `contributors.json` with the following and push:",
+                "Or manually replace your `contributors.json` with the content below and push:",
                 "",
                 "```json",
                 merged.trim(),
                 "```"
               ].join('\n');
 
-              if (botComment) {
-                await github.rest.issues.updateComment({ owner, repo, comment_id: botComment.id, body });
+              if (bot) {
+                await github.rest.issues.updateComment({ owner, repo, comment_id: bot.id, body });
                 core.info(`PR #${pr.number}: Updated existing bot comment.`);
               } else {
                 await github.rest.issues.createComment({ owner, repo, issue_number: pr.number, body });
