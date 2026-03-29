@@ -250,49 +250,66 @@
     }
 
     /**
-     * Builds the published packages section HTML.
+     * Builds the published packages section HTML with collapsible overflow.
      * @param {Array<{name: string, url: string, registry?: string}>|undefined} packages
+     * @param {string} githubId
      * @returns {string}
      */
-    function buildPackages(packages) {
+    function buildPackages(packages, githubId) {
       if (!packages || !packages.length) return '';
-      const items = packages.map(pkg => {
+      const PREVIEW   = 5;
+      const sectionId = `pkg-${githubId}`;
+      const renderItem = pkg => {
         const meta = REGISTRY_META[(pkg.registry || '').toLowerCase()] ?? DEFAULT_REGISTRY;
         return `<a href="${pkg.url}" target="_blank" rel="noopener noreferrer" title="${pkg.name}"
-          class="flex items-center gap-1.5 px-2.5 py-1 rounded-lg border ${meta.color} text-xs font-medium hover:brightness-125 transition-all truncate"
+          class="flex items-center gap-1.5 px-2.5 py-1 rounded-lg border ${meta.color} text-xs font-medium hover:brightness-125 transition-all truncate min-w-0 block mb-1 last:mb-0"
           >${meta.icon} <span class="truncate">${pkg.name}</span></a>`;
-      }).join('');
-      return `<div>
+      };
+      const preview   = packages.slice(0, PREVIEW);
+      const rest      = packages.slice(PREVIEW);
+      const moreBlock = rest.length ? `
+        <div id="${sectionId}" class="hidden mt-1">${rest.map(renderItem).join('')}</div>
+        <button onclick="toggleSection(this,'${sectionId}')" data-more="+ ${rest.length} more" data-less="Show less"
+          class="text-xs text-purple-400 hover:text-purple-300 transition-colors mt-1 cursor-pointer">+ ${rest.length} more</button>` : '';
+      return `<div class="min-w-0">
         <p class="text-xs font-semibold text-slate-500 uppercase tracking-widest mb-1.5">📦 Packages</p>
-        <div class="flex flex-col gap-1">${items}</div>
+        <div>${preview.map(renderItem).join('')}</div>${moreBlock}
       </div>`;
     }
 
     /**
-     * Builds the OSS contributions section HTML.
+     * Builds the OSS contributions section HTML with collapsible overflow.
      * @param {Array<{name: string, url: string}>|undefined} projects
+     * @param {string} githubId
      * @returns {string}
      */
-    function buildOpenSource(projects) {
+    function buildOpenSource(projects, githubId) {
       if (!projects || !projects.length) return '';
-      const items = projects.map(p =>
+      const PREVIEW   = 5;
+      const sectionId = `oss-${githubId}`;
+      const renderItem = p =>
         `<a href="${p.url}" target="_blank" rel="noopener noreferrer" title="${p.name}"
-          class="flex items-center gap-1.5 text-xs text-slate-400 hover:text-purple-300 transition-colors truncate"
-          >${ICONS.oss}<span class="truncate">${p.name}</span></a>`
-      ).join('');
-      return `<div>
+          class="flex items-center gap-1.5 text-xs text-slate-400 hover:text-purple-300 transition-colors truncate block mb-1 last:mb-0"
+          >${ICONS.oss}<span class="truncate">${p.name}</span></a>`;
+      const preview   = projects.slice(0, PREVIEW);
+      const rest      = projects.slice(PREVIEW);
+      const moreBlock = rest.length ? `
+        <div id="${sectionId}" class="hidden mt-1">${rest.map(renderItem).join('')}</div>
+        <button onclick="toggleSection(this,'${sectionId}')" data-more="+ ${rest.length} more" data-less="Show less"
+          class="text-xs text-purple-400 hover:text-purple-300 transition-colors mt-1 cursor-pointer">+ ${rest.length} more</button>` : '';
+      return `<div class="min-w-0">
         <p class="text-xs font-semibold text-slate-500 uppercase tracking-widest mb-1.5">🔧 OSS Projects</p>
-        <div class="flex flex-col gap-1">${items}</div>
+        <div>${preview.map(renderItem).join('')}</div>${moreBlock}
       </div>`;
     }
 
     /**
-     * Returns the full card HTML for one contributor.
+     * Builds a standard vertical contributor card.
      * @param {Contributor} c
      * @param {number} index
      * @returns {string}
      */
-    function buildCard(c, index) {
+    function buildRegularCard(c, index) {
       const displayName = c.name || c.github;
       const githubUrl   = `https://github.com/${c.github}`;
       const avatarUrl   = `https://github.com/${c.github}.png?size=96`;
@@ -325,8 +342,8 @@
           </div>
           ${introBlock}
           ${techBlock}
-          ${buildPackages(c.packages)}
-          ${buildOpenSource(c.openSource)}
+          ${buildPackages(c.packages, c.github)}
+          ${buildOpenSource(c.openSource, c.github)}
           <div class="mt-auto flex items-center gap-2 pt-1">
             ${buildSocialLinks(c)}
             <a href="${githubUrl}" target="_blank" rel="noopener noreferrer"
@@ -338,6 +355,94 @@
             </a>
           </div>
         </article>`;
+    }
+
+    /**
+     * Builds a horizontal full-width card for Maintainer category.
+     * @param {Contributor} c
+     * @param {number} index
+     * @returns {string}
+     */
+    function buildMaintainerCard(c, index) {
+      const displayName = c.name || c.github;
+      const githubUrl   = `https://github.com/${c.github}`;
+      const avatarUrl   = `https://github.com/${c.github}.png?size=128`;
+      const fallback    = `https://ui-avatars.com/api/?name=${encodeURIComponent(displayName)}&background=6d28d9&color=fff&size=128`;
+
+      const categoryBadge = c.category
+        ? `<span class="inline-block px-2 py-0.5 rounded-md text-xs font-medium border ${categoryColor(c.category)}">${c.category}</span>`
+        : '';
+      const techBlock = c.techStack && c.techStack.length
+        ? `<div>
+            <p class="text-xs font-semibold text-slate-500 uppercase tracking-widest mb-1.5">⚡ Tech Stack</p>
+            <div class="flex flex-wrap gap-1.5">${c.techStack.map(t => `<span class="px-2 py-0.5 rounded-md text-xs font-medium border ${techColor(t)}">${t}</span>`).join('')}</div>
+          </div>`
+        : '';
+
+      return `
+        <article class="col-span-full group flex flex-col sm:flex-row gap-5 bg-slate-900 border border-slate-800 rounded-2xl p-6
+                        hover:border-purple-500/50 hover:shadow-xl hover:shadow-purple-500/10
+                        transition-all duration-300 animate-slide-up"
+                 style="animation-delay:${index * 40}ms">
+
+          <!-- Left: identity -->
+          <div class="flex flex-col gap-3 sm:w-60 shrink-0">
+            <div class="flex sm:flex-col items-center sm:items-start gap-4">
+              <img src="${avatarUrl}" alt="${displayName}" loading="lazy"
+                class="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl ring-2 ring-slate-700 group-hover:ring-purple-500/60 transition-all shrink-0"
+                onerror="this.src='${fallback}'" />
+              <div class="min-w-0">
+                <h3 class="font-bold text-white text-base">${displayName}</h3>
+                <p class="text-xs text-slate-500">@${c.github}</p>
+                <div class="mt-1.5">${categoryBadge}</div>
+              </div>
+            </div>
+            ${c.intro ? `<p class="text-slate-400 text-sm leading-relaxed hidden sm:block">${c.intro}</p>` : ''}
+            <div class="mt-auto flex flex-wrap items-center gap-1.5 pt-1">
+              ${buildSocialLinks(c)}
+              <a href="${githubUrl}" target="_blank" rel="noopener noreferrer"
+                class="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium
+                       bg-slate-800 border border-slate-700 text-slate-300
+                       hover:bg-purple-600 hover:border-purple-500 hover:text-white
+                       transition-all duration-200 shrink-0">
+                ${ICONS.github} GitHub
+              </a>
+            </div>
+          </div>
+
+          <!-- Vertical divider (desktop) -->
+          <div class="hidden sm:block w-px bg-slate-800 self-stretch"></div>
+
+          <!-- Right: tech + packages + oss -->
+          <div class="flex-1 min-w-0 flex flex-col gap-4">
+            ${c.intro ? `<p class="text-slate-400 text-sm leading-relaxed sm:hidden">${c.intro}</p>` : ''}
+            ${techBlock}
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+              ${buildPackages(c.packages, c.github)}
+              ${buildOpenSource(c.openSource, c.github)}
+            </div>
+          </div>
+        </article>`;
+    }
+
+    /**
+     * Dispatches to horizontal or vertical card based on category.
+     * @param {Contributor} c
+     * @param {number} index
+     * @returns {string}
+     */
+    function buildCard(c, index) {
+      return c.category === 'Maintainer' ? buildMaintainerCard(c, index) : buildRegularCard(c, index);
+    }
+
+    /**
+     * Toggles a collapsible section and updates the trigger button label.
+     * @param {HTMLButtonElement} btn
+     * @param {string} id
+     */
+    function toggleSection(btn, id) {
+      const isNowHidden = document.getElementById(id).classList.toggle('hidden');
+      btn.textContent = isNowHidden ? btn.dataset.more : btn.dataset.less;
     }
 
     function updateStats() {
