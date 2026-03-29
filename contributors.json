@@ -4,31 +4,158 @@
     "name": "Punyapal Shah",
     "category": "Maintainer",
     "intro": "Building communities, content & tools for the PHP & Laravel ecosystem.",
-    "techStack": ["Laravel", "PHP", "JavaScript"],
+    "techStack": [
+      "Laravel",
+      "PHP",
+      "JavaScript"
+    ],
     "packages": [
-      { "name": "mrpunyapal/laravel-auth-jobs",          "url": "https://packagist.org/packages/mrpunyapal/laravel-auth-jobs",          "registry": "packagist" },
-      { "name": "mrpunyapal/laravel-extended-commands",  "url": "https://packagist.org/packages/mrpunyapal/laravel-extended-commands",  "registry": "packagist" },
-      { "name": "mrpunyapal/pest-annotator-plugin",      "url": "https://packagist.org/packages/mrpunyapal/pest-annotator-plugin",      "registry": "packagist" },
-      { "name": "mrpunyapal/peststan",                   "url": "https://packagist.org/packages/mrpunyapal/peststan",                   "registry": "packagist" },
-      { "name": "mrpunyapal/php-2fa",                    "url": "https://packagist.org/packages/mrpunyapal/php-2fa",                    "registry": "packagist" },
-      { "name": "mrpunyapal/rector-pest",                "url": "https://packagist.org/packages/mrpunyapal/rector-pest",                "registry": "packagist" },
-      { "name": "laravel-extended-relationships",        "url": "https://packagist.org/packages/mr-punyapal/laravel-extended-relationships",        "registry": "github"    }
+      {
+        "name": "mrpunyapal/laravel-auth-jobs",
+        "url": "https://packagist.org/packages/mrpunyapal/laravel-auth-jobs",
+        "registry": "packagist"
+      },
+      {
+        "name": "mrpunyapal/laravel-extended-commands",
+        "url": "https://packagist.org/packages/mrpunyapal/laravel-extended-commands",
+        "registry": "packagist"
+      },
+      {
+        "name": "mrpunyapal/pest-annotator-plugin",
+        "url": "https://packagist.org/packages/mrpunyapal/pest-annotator-plugin",
+        "registry": "packagist"
+      },
+      {
+        "name": "mrpunyapal/peststan",
+        "url": "https://packagist.org/packages/mrpunyapal/peststan",
+        "registry": "packagist"
+      },
+      {
+        "name": "mrpunyapal/php-2fa",
+        "url": "https://packagist.org/packages/mrpunyapal/php-2fa",
+        "registry": "packagist"
+      },
+      {
+        "name": "mrpunyapal/rector-pest",
+        "url": "https://packagist.org/packages/mrpunyapal/rector-pest",
+        "registry": "packagist"
+      },
+      {
+        "name": "laravel-extended-relationships",
+        "url": "https://packagist.org/packages/mr-punyapal/laravel-extended-relationships",
+        "registry": "github"
+      }
     ],
     "website": "https://mrpunyapal.dev",
     "twitter": "MrPunyapal",
     "blog": "https://mrpunyapal.dev/talks",
     "openSource": [
-      { "name": "OSSForAll/I-AM-CONTRIBUTOR", "url": "https://github.com/OSSForAll/I-AM-CONTRIBUTOR" }
+      {
+        "name": "OSSForAll/I-AM-CONTRIBUTOR",
+        "url": "https://github.com/OSSForAll/I-AM-CONTRIBUTOR"
+      }
     ],
     "linkedin": "mrpunyapal"
+  },
+  {
+    "github": "jayeshrajyaguru",
+    "name": "Jayesh Rajyaguru",
+    "category": "Maintainer",
+    "intro": "Building communities, content & tools for the PHP & Laravel ecosystem.",
+    "techStack": [
+      "Laravel",
+      "PHP",
+      "JavaScript"
+    ],
+    "packages": [
+      {
+        "name": "jayeshrajyaguru/laravel-auth-jobs",
+        "url": "https://packagist.org/packages/jayeshrajyaguru/laravel-auth-jobs",
+        "registry": "packagist"
+      },
+      {
+        "name": "jayeshrajyaguru/laravel-extended-commands",
+        "url": "https://packagist.org/packages/jayeshrajyaguru/laravel-extended-commands",
+        "registry": "packagist"
+      },
+      {
+        "name": "jayeshrajyaguru/pest-annotator-plugin",
+        "url": "https://packagist.org/packages/jayeshrajyaguru/pest-annotator-plugin",
+        "registry": "packagist"
+      },
+      {
+        "name": "jayeshrajyaguru/peststan",
+        "url": "https://packagist.org/packages/jayeshrajyaguru/peststan",
+        "registry": "packagist"
+      },
+      {
+        "name": "jayeshrajyaguru/php-2fa",
+        "url": "https://packagist.org/packages/jayeshrajyaguru/php-2fa",
+        "registry": "packagist"
+      },
+      {
+        "name": "jayeshrajyaguru/rector-pest",
+        "url": "https://packagist.org/packages/jayeshrajyaguru/rector-pest",
+        "registry": "packagist"
+      },
+      {
+        "name": "laravel-extended-relationships",
+        "url": "https://packagist.org/packages/mr-punyapal/laravel-extended-relationships",
+        "registry": "github"
+      }
+    ],
+    "website": "https://jayeshrajyaguru.dev",
+    "twitter": "jayeshrajyaguru",
+    "blog": "https://jayeshrajyaguru.dev/talks",
+    "openSource": [
+      {
+        "name": "OSSForAll/I-AM-CONTRIBUTOR",
+        "url": "https://github.com/OSSForAll/I-AM-CONTRIBUTOR"
+      }
+    ],
+    "linkedin": "jayeshrajyaguru"
+  },
+  {
+    "github": "sonalidudhia",
+    "name": "sonali dudhia"
+  },
+  {
+    "github": "samakshgrover",
+    "name": "Samaksh Grover",
+    "category": "Beginner",
+    "intro": "A Software engineer",
+    "techStack": [
+      "JavaScript",
+      "Node.js"
+    ],
+    "packages": [
+      {
+        "name": "your-package",
+        "url": "https://packagist.org/packages/you/your-package",
+        "registry": "packagist"
+      }
+    ],
+    "website": "https://github.com/samakshgrove",
+    "twitter": "samaksh_grover",
+    "blog": "https://dev.to/yourhandle",
+    "youtube": "https://youtube.com/@yourchannel",
+    "linkedin": "samakshgrover/",
+    "openSource": [
+      {
+        "name": "org/repo",
+        "url": "https://github.com/org/repo"
+      }
+    ]
   },
   {
     "github": "OmRojesara",
     "name": "Om Rojesara",
     "category": "Begginer",
     "intro": "Full-stack developer",
-    "techStack": ["Laravel", "PostgreSQL"],
+    "techStack": [
+      "Laravel",
+      "PostgreSQL"
+    ],
     "linkedin": "https://www.linkedin.com/in/omrojesara"
   }
 ]
-
