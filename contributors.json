@@ -21,6 +21,14 @@
       { "name": "OSSForAll/I-AM-CONTRIBUTOR", "url": "https://github.com/OSSForAll/I-AM-CONTRIBUTOR" }
     ],
     "linkedin": "mrpunyapal"
+  },
+  {
+    "github": "OmRojesara",
+    "name": "Om Rojesara",
+    "category": "Begginer",
+    "intro": "Full-stack developer",
+    "techStack": ["Laravel", "PostgreSQL"],
+    "linkedin": "https://www.linkedin.com/in/omrojesara"
   }
 ]
 
