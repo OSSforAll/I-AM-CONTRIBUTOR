@@ -178,4 +178,20 @@
     ],
     "linkedin": "sandeep-thakkar-a02a0b67"
   }
+],
+[
+  {
+    "github": "gaurav-7span"
+  },
+  {
+    "github": "gaurav-7span",
+    "name": "Gaurav Bhayani",
+    "category": "Beginner",
+    "intro": "i am intern at the 7span.",
+    "techStack": [
+      "PHP",
+      "Laravel",
+      "JavaScript"
+    ],
+  }
 ]
