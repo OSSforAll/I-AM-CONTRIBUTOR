@@ -58,6 +58,29 @@
     "linkedin": "mrpunyapal"
   },
   {
+    "github": "ketanbarevadiya",
+    "name": "Ketan Barevadiya",
+    "category": "Beginner",
+    "intro": "Building communities, content & tools for the PHP & Laravel ecosystem.Also can work with vuejs and reactjs",
+    "techStack": [
+      "Laravel", 
+      "PHP", 
+      "JavaScript", 
+      "vuejs",
+      "reactjs"
+    ],
+    "packages": [],
+    "website": "",
+    "twitter": "BarevadiyaKetan",
+    "blog": "",
+    "openSource": [],
+    "linkedin": "ketan-barevadiya-78710745"
+  },
+  {
+    "github":"sonalidudhia",
+    "name":"sonali dudhia"
+  },
+  {
     "github": "jayeshrajyaguru",
     "name": "Jayesh Rajyaguru",
     "category": "Maintainer",
@@ -114,10 +137,6 @@
       }
     ],
     "linkedin": "jayeshrajyaguru"
-  },
-  {
-    "github": "sonalidudhia",
-    "name": "sonali dudhia"
   },
   {
     "github": "samakshgrover",
