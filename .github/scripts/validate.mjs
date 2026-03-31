@@ -1,4 +1,4 @@
-#!/usr/bin/env node
+﻿#!/usr/bin/env node
 // @ts-check
 import { readFileSync } from 'fs';
 import { resolve } from 'path';
@@ -7,7 +7,8 @@ const VALID_CATEGORIES  = ['Beginner', 'Intermediate', 'Advanced', 'Maintainer']
 const VALID_REGISTRIES  = ['npm', 'packagist', 'pypi', 'rubygems', 'crates', 'github'];
 const GITHUB_USER_RE    = /^[a-zA-Z0-9]([a-zA-Z0-9-]{0,37}[a-zA-Z0-9])?$/;
 const URL_RE            = /^https?:\/\/.+/;
-const HANDLE_RE         = /^[^\s@/]+$/;
+const TWITTER_HANDLE_RE = /^[a-zA-Z0-9_]{1,50}$/;
+const LINKEDIN_HANDLE_RE = /^[a-zA-Z0-9-]{3,100}$/;
 
 /**
  * Collected validation errors.
@@ -134,14 +135,21 @@ contributors.forEach((c, i) => {
     }
   }
 
-  // Handle-type optional fields (no URL, no @, no spaces)
-  for (const field of ['twitter', 'linkedin']) {
-    if (c[field] !== undefined) {
-      if (typeof c[field] !== 'string') {
-        fail(i, field, 'must be a string');
-      } else if (!HANDLE_RE.test(c[field])) {
-        fail(i, field, `must be a plain handle without @ or URL (e.g. "yourhandle")`);
-      }
+  // twitter — accept plain handle (letters/digits/underscores) OR full URL
+  if (c.twitter !== undefined) {
+    if (typeof c.twitter !== 'string') {
+      fail(i, 'twitter', 'must be a string');
+    } else if (!TWITTER_HANDLE_RE.test(c.twitter) && !URL_RE.test(c.twitter)) {
+      fail(i, 'twitter', `must be a plain handle (e.g. "yourhandle") or a full URL`);
+    }
+  }
+
+  // linkedin — accept plain handle (letters/digits/hyphens) OR full URL
+  if (c.linkedin !== undefined) {
+    if (typeof c.linkedin !== 'string') {
+      fail(i, 'linkedin', 'must be a string');
+    } else if (!LINKEDIN_HANDLE_RE.test(c.linkedin) && !URL_RE.test(c.linkedin)) {
+      fail(i, 'linkedin', `must be a plain handle (letters, numbers, hyphens — e.g. "tushar-sonar") or a full URL`);
     }
   }
 
