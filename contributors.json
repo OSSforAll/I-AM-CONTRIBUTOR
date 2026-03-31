@@ -148,6 +148,37 @@
     ]
   },
   {
+    "github": "ThakkarSandeep",
+    "name": "Sandeep Thakkar",
+    "category": "Intermediate",
+    "intro": "Sr. Software Engineer with 7+ years in PHP & Laravel (Livewire, Filament), 3+ years in React JS & Node.js, and 4+ years in SaaS projects. Experienced with AWS, Vtiger CRM, Magento 2, and AI-powered dev tools.",
+    "techStack": [
+      "Laravel",
+      "PHP",
+      "Livewire",
+      "Filament",
+      "React JS",
+      "Node.js",
+      "NestJS",
+      "Tailwind CSS",
+      "AWS",
+      "Vtiger CRM",
+      "Magento2",
+      "CodeIgniter"
+    ],
+    "packages": [],
+    "website": "https://stcodewriter.blogspot.com/",
+    "twitter": "Sandeep65369356",
+    "blog": "https://stcodewriter.blogspot.com/",
+    "openSource": [
+      {
+        "name": "OSSForAll/I-AM-CONTRIBUTOR",
+        "url": "https://github.com/OSSForAll/I-AM-CONTRIBUTOR"
+      }
+    ],
+    "linkedin": "sandeep-thakkar-a02a0b67"
+  },
+  {
     "github": "OmRojesara",
     "name": "Om Rojesara",
     "category": "Begginer",
