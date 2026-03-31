@@ -21,6 +21,18 @@
       { "name": "OSSForAll/I-AM-CONTRIBUTOR", "url": "https://github.com/OSSForAll/I-AM-CONTRIBUTOR" }
     ],
     "linkedin": "mrpunyapal"
+  },
+  {
+    "github": "NayangDevOps",
+    "name": "Nayan Gondaliya",
+    "category": "Developer",
+    "intro": "I'm a developer.",
+    "techStack": ["Laravel", "PHP", "JavaScript"],
+    "openSource": [
+      { "name": "OSSForAll/I-AM-CONTRIBUTOR", "url": "https://github.com/OSSForAll/I-AM-CONTRIBUTOR" }
+    ],
+    "linkedin": "nayan-gondaliya-222b82212"
   }
+
 ]
 
