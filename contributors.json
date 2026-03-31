@@ -62,7 +62,11 @@
     "name": "Tushar Sonar",
     "category": "Beginner",
     "intro": "Going to start Building communities, content & tools for the PHP & Laravel ecosystem.",
-    "techStack": ["Laravel", "PHP", "JavaScript"],
+    "techStack": [
+      "Laravel",
+      "PHP",
+      "JavaScript"
+    ],
     "website": "https://tushar-portfolio-virid.vercel.app",
     "linkedin": "tushar-sonar"
   },
