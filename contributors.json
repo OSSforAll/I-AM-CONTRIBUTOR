@@ -58,6 +58,20 @@
     "linkedin": "mrpunyapal"
   },
   {
+    "github": "ketanchandelbacancy",
+    "name": "Ketan Chandel",
+    "category": "Maintainer",
+    "intro": "Building communities, content & tools for the PHP & Laravel ecosystem.",
+    "techStack": ["Laravel", "PHP", "JavaScript"],
+    "twitter": "ketanchandel",
+    "openSource": [
+      { "name": "OSSForAll/I-AM-CONTRIBUTOR", "url": "https://github.com/OSSForAll/I-AM-CONTRIBUTOR" }
+    ],
+    "linkedin": "ketanchandel"
+  },{
+    "github":"sonalidudhia",
+    "name":"sonali dudhia"
+  },{
     "github": "jayeshrajyaguru",
     "name": "Jayesh Rajyaguru",
     "category": "Maintainer",
