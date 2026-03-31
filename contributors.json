@@ -177,5 +177,16 @@
       }
     ],
     "linkedin": "sandeep-thakkar-a02a0b67"
+  },
+  {
+    "github": "OmRojesara",
+    "name": "Om Rojesara",
+    "category": "Begginer",
+    "intro": "Full-stack developer",
+    "techStack": [
+      "Laravel",
+      "PostgreSQL"
+    ],
+    "linkedin": "https://www.linkedin.com/in/omrojesara"
   }
 ]
