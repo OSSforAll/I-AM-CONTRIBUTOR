@@ -58,21 +58,27 @@
     "linkedin": "mrpunyapal"
   },
   {
-    "github":"sonalidudhia",
-    "name":"sonali dudhia"
-  }, 
+    "github": "sonalidudhia",
+    "name": "sonali dudhia"
+  },
   {
     "github": "darshan-99",
     "name": "Darshan Soni",
     "category": "Beginner",
     "intro": "Building communities, content & tools for the PHP & Laravel ecosystem.",
-    "techStack": ["Laravel", "PHP", "JavaScript"],
-    "packages": [
+    "techStack": [
+      "Laravel",
+      "PHP",
+      "JavaScript"
     ],
+    "packages": [],
     "website": "https://darshan-soni-dev.netlify.app",
     "twitter": "me_darshan_soni",
     "openSource": [
-      { "name": "OSSForAll/I-AM-CONTRIBUTOR", "url": "https://github.com/OSSForAll/I-AM-CONTRIBUTOR" }
+      {
+        "name": "OSSForAll/I-AM-CONTRIBUTOR",
+        "url": "https://github.com/OSSForAll/I-AM-CONTRIBUTOR"
+      }
     ],
     "linkedin": "darshansoni"
   },
