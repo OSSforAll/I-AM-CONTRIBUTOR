@@ -56,6 +56,18 @@
       }
     ],
     "linkedin": "mrpunyapal"
+  },{
+    "github": "nayanchamp",
+    "name": "Nayan Prajapati",
+    "category": "Beginner",
+    "intro": "Building communities, content & tools for the PHP & Laravel ecosystem.",
+    "techStack": ["Laravel", "PHP", "JavaScript"],
+    "website": "https://alpswebsolutions.com",
+    "twitter": "nayanchamp",
+    "openSource": [
+      { "name": "nayanchamp/I-AM-CONTRIBUTOR", "url": "https://github.com/nayanchamp/I-AM-CONTRIBUTOR" }
+    ],
+    "linkedin": "nayanchamp"
   },
   {
     "github": "sonalidudhia",
