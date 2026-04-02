@@ -1,0 +1,208 @@
+name: Batch merge open contributor PRs
+
+on:
+  workflow_dispatch:
+    inputs:
+      dry-run:
+        description: 'Preview what would be merged without pushing'
+        type: boolean
+        default: true
+
+jobs:
+  batch-merge:
+    name: Merge all valid open contributor PRs
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: read
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Batch merge PRs
+        uses: actions/github-script@v7
+        env:
+          DRY_RUN: ${{ inputs.dry-run }}
+        with:
+          script: |
+            const { execFileSync } = require('child_process');
+            const fs = require('fs');
+            const path = require('path');
+            const { owner, repo } = context.repo;
+            const dryRun = process.env.DRY_RUN === 'true';
+
+            const git = (...args) =>
+              execFileSync('git', args, { encoding: 'utf8' }).trim();
+
+            const gitRaw = (...args) =>
+              execFileSync('git', args, { encoding: 'utf8' });
+
+            git('config', 'user.name', 'github-actions[bot]');
+            git('config', 'user.email', 'github-actions[bot]@users.noreply.github.com');
+
+            // Collect all open PRs
+            const allPRs = await github.paginate(github.rest.pulls.list, {
+              owner, repo, state: 'open', base: 'main', per_page: 100
+            });
+
+            // Filter to PRs that touch contributors.json, sort oldest first
+            const candidatePRs = [];
+            for (const pr of allPRs) {
+              const { data: files } = await github.rest.pulls.listFiles({
+                owner, repo, pull_number: pr.number, per_page: 100
+              });
+              if (files.some(f => f.filename === 'contributors.json')) {
+                candidatePRs.push(pr);
+              }
+            }
+            candidatePRs.sort((a, b) => a.number - b.number);
+
+            core.info(`Found ${candidatePRs.length} open PRs touching contributors.json`);
+            if (candidatePRs.length === 0) {
+              core.info('Nothing to do.');
+              return;
+            }
+
+            const merged = [];
+            const skipped = [];
+            const failed = [];
+
+            for (const pr of candidatePRs) {
+              const prNum = pr.number;
+              const prUser = pr.head.repo?.owner?.login || pr.user.login;
+              core.info(`\n── PR #${prNum} by @${prUser} ──`);
+
+              try {
+                // Fetch PR head commit
+                git('fetch', 'origin', `refs/pull/${prNum}/head`, '--depth=1');
+                const prHeadSha = git('rev-parse', 'FETCH_HEAD');
+
+                // Extract PR's contributors.json
+                const prContent = gitRaw('show', `${prHeadSha}:contributors.json`);
+                const prFile = `/tmp/pr-${prNum}.json`;
+                fs.writeFileSync(prFile, prContent);
+
+                // Validate PR's contributors.json by running validate.mjs against it
+                const validateResult = require('child_process').spawnSync(
+                  'node', ['.github/scripts/validate.mjs'],
+                  { encoding: 'utf8', env: { ...process.env, NODE_PATH: '' },
+                    cwd: '/tmp', }
+                );
+
+                // We need to validate the PR's file. The validator reads from cwd/contributors.json.
+                // So we copy it temporarily and run from a temp dir.
+                const tmpDir = `/tmp/validate-${prNum}`;
+                fs.mkdirSync(tmpDir, { recursive: true });
+                fs.writeFileSync(path.join(tmpDir, 'contributors.json'), prContent);
+                fs.copyFileSync(
+                  path.join(process.cwd(), '.github/scripts/validate.mjs'),
+                  path.join(tmpDir, 'validate.mjs')
+                );
+
+                const valResult = require('child_process').spawnSync(
+                  'node', ['validate.mjs'],
+                  { encoding: 'utf8', cwd: tmpDir }
+                );
+
+                if (valResult.status !== 0) {
+                  const errMsg = (valResult.stderr || valResult.stdout || '').trim();
+                  core.warning(`PR #${prNum}: Validation failed — ${errMsg}`);
+                  skipped.push({ pr: prNum, user: prUser, reason: 'validation failed' });
+                  continue;
+                }
+
+                // Compute merged content (base = current main's contributors.json)
+                const currentMain = path.join(process.cwd(), 'contributors.json');
+                const mergedContent = execFileSync('node', [
+                  '.github/scripts/merge-contributors.mjs', currentMain, prFile
+                ], { encoding: 'utf8' });
+
+                // Check if PR adds any new entries
+                const currentData = JSON.parse(fs.readFileSync(currentMain, 'utf8'));
+                const mergedData = JSON.parse(mergedContent);
+
+                if (mergedData.length === currentData.length) {
+                  core.info(`PR #${prNum}: No new contributors (duplicate) — skipping.`);
+                  skipped.push({ pr: prNum, user: prUser, reason: 'duplicate contributor' });
+                  continue;
+                }
+
+                const newCount = mergedData.length - currentData.length;
+                core.info(`PR #${prNum}: Adds ${newCount} new contributor(s).`);
+
+                if (dryRun) {
+                  core.info(`PR #${prNum}: [DRY RUN] Would merge.`);
+                  merged.push({ pr: prNum, user: prUser });
+                  // Update working copy for next iteration even in dry-run
+                  // so subsequent merge calculations are correct
+                  fs.writeFileSync(currentMain, mergedContent);
+                  continue;
+                }
+
+                // Write merged content to working tree
+                fs.writeFileSync(currentMain, mergedContent);
+                git('add', 'contributors.json');
+
+                // Build tree object from index
+                const tree = git('write-tree');
+
+                // Current HEAD
+                const mainHead = git('rev-parse', 'HEAD');
+
+                // Create merge commit: parents = [main HEAD, PR HEAD]
+                const newUsername = mergedData.slice(currentData.length).map(c => c.github).join(', ');
+                const commitMsg = `feat: add ${newUsername} to the wall of fame (#${prNum})`;
+                const mergeCommit = git(
+                  'commit-tree', tree,
+                  '-p', mainHead,
+                  '-p', prHeadSha,
+                  '-m', commitMsg
+                );
+
+                // Advance HEAD to the new merge commit
+                git('update-ref', 'refs/heads/main', mergeCommit);
+                git('reset', '--hard', mergeCommit);
+
+                core.info(`PR #${prNum}: Created merge commit ${mergeCommit.slice(0, 8)}`);
+                merged.push({ pr: prNum, user: prUser });
+
+              } catch (e) {
+                core.warning(`PR #${prNum}: Error — ${e.message}`);
+                failed.push({ pr: prNum, user: prUser, error: e.message });
+              }
+            }
+
+            // Summary
+            core.info('\n══════════════════════════════════════');
+            core.info(`SUMMARY${dryRun ? ' (DRY RUN)' : ''}:`);
+            core.info(`  Merged:  ${merged.length}`);
+            core.info(`  Skipped: ${skipped.length}`);
+            core.info(`  Failed:  ${failed.length}`);
+
+            if (merged.length > 0) {
+              core.info('\nMerged PRs:');
+              merged.forEach(m => core.info(`  #${m.pr} by @${m.user}`));
+            }
+            if (skipped.length > 0) {
+              core.info('\nSkipped PRs:');
+              skipped.forEach(s => core.info(`  #${s.pr} by @${s.user} — ${s.reason}`));
+            }
+            if (failed.length > 0) {
+              core.info('\nFailed PRs:');
+              failed.forEach(f => core.info(`  #${f.pr} by @${f.user} — ${f.error}`));
+            }
+
+            if (!dryRun && merged.length > 0) {
+              core.info('\nPushing all merge commits to main…');
+              git('push', 'origin', 'main');
+              core.info('Done! All merged PRs should now show the purple "Merged" badge.');
+            } else if (dryRun && merged.length > 0) {
+              core.info('\n[DRY RUN] No push performed. Re-run with dry-run=false to merge.');
+            }
