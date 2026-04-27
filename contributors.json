@@ -58,6 +58,17 @@
     "linkedin": "mrpunyapal"
   },
   {
+    "github": "NayangDevOps",
+    "name": "Nayan Gondaliya",
+    "category": "Intermediate",
+    "intro": "I'm a developer.",
+    "techStack": ["Laravel", "PHP", "JavaScript"],
+    "openSource": [
+      { "name": "OSSForAll/I-AM-CONTRIBUTOR", "url": "https://github.com/OSSForAll/I-AM-CONTRIBUTOR" }
+    ],
+    "linkedin": "nayan-gondaliya-222b82212"
+  },
+  {
     "github": "dipendrapancholi",
     "name": "Dipendra Pancholi",
   },
@@ -236,4 +247,5 @@
     ],
     "linkedin": "sandeep-thakkar-a02a0b67"
   }
+
 ]
