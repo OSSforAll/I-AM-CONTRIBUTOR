@@ -58,6 +58,15 @@
     "linkedin": "mrpunyapal"
   },
   {
+  "github": "shruti-rawal",
+  "name": "Shruti Raval",
+  "category": "Beginner",
+  "intro": "Working on open-source library software.",
+  "techStack": ["PHP", "Laravel", "JavaScript","JAVA","HTML"],
+  "youtube": "https://www.youtube.com/@shrutiraval6806",
+  "linkedin": "https://www.linkedin.com/in/shruti-raval-11770022a/"
+  },
+  {
     "github": "dipendrapancholi",
     "name": "Dipendra Pancholi",
   },
