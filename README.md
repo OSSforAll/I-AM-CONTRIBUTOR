@@ -96,7 +96,7 @@ git push origin feat/add-contributor-your-github-username
 Go to the original [OSSForAll/I-AM-CONTRIBUTOR](https://github.com/OSSForAll/I-AM-CONTRIBUTOR) repo. You'll see a "Compare & pull request" button. Click it, add a short description, and submit!
 
 > **No need to worry about merge conflicts!**
-> If another PR is merged before yours, a bot will automatically rebase your `contributors.json` against the latest `main` and push the fix to your branch. You don't need to do anything.
+> A maintainer will merge your PR using our smart-merge bot that automatically resolves conflicts in `contributors.json`. You don't need to rebase or fix anything — just submit your PR and wait for it to be merged.
 
 ---
 

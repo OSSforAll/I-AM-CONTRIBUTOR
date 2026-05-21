@@ -77,8 +77,81 @@
     "linkedin": "ketan-barevadiya-78710745"
   },
   {
-    "github":"sonalidudhia",
-    "name":"sonali dudhia"
+    "github": "shruti-rawal",
+    "name": "Shruti Raval",
+    "category": "Beginner",
+    "intro": "Working on open-source library software.",
+    "techStack": [
+      "PHP",
+      "Laravel",
+      "JavaScript",
+      "JAVA",
+      "HTML"
+    ],
+    "youtube": "https://www.youtube.com/@shrutiraval6806",
+    "linkedin": "https://www.linkedin.com/in/shruti-raval-11770022a/"
+  },
+  {
+    "github": "dipendrapancholi",
+    "name": "Dipendra Pancholi"
+  },
+  {
+    "github": "nayanchamp",
+    "name": "Nayan Prajapati",
+    "category": "Beginner",
+    "intro": "Building communities, content & tools for the PHP & Laravel ecosystem.",
+    "techStack": [
+      "Laravel",
+      "PHP",
+      "JavaScript"
+    ],
+    "website": "https://alpswebsolutions.com",
+    "twitter": "nayanchamp",
+    "openSource": [
+      {
+        "name": "nayanchamp/I-AM-CONTRIBUTOR",
+        "url": "https://github.com/nayanchamp/I-AM-CONTRIBUTOR"
+      }
+    ],
+    "linkedin": "nayanchamp"
+  },
+  {
+    "github": "sonalidudhia",
+    "name": "sonali dudhia"
+  },
+  {
+    "github": "darshan-99",
+    "name": "Darshan Soni",
+    "category": "Beginner",
+    "intro": "Building communities, content & tools for the PHP & Laravel ecosystem.",
+    "techStack": [
+      "Laravel",
+      "PHP",
+      "JavaScript"
+    ],
+    "packages": [],
+    "website": "https://darshan-soni-dev.netlify.app",
+    "twitter": "me_darshan_soni",
+    "openSource": [
+      {
+        "name": "OSSForAll/I-AM-CONTRIBUTOR",
+        "url": "https://github.com/OSSForAll/I-AM-CONTRIBUTOR"
+      }
+    ],
+    "linkedin": "darshansoni"
+  },
+  {
+    "github": "tushara4948",
+    "name": "Tushar Sonar",
+    "category": "Beginner",
+    "intro": "Going to start Building communities, content & tools for the PHP & Laravel ecosystem.",
+    "techStack": [
+      "Laravel",
+      "PHP",
+      "JavaScript"
+    ],
+    "website": "https://tushar-portfolio-virid.vercel.app",
+    "linkedin": "tushar-sonar"
   },
   {
     "github": "jayeshrajyaguru",

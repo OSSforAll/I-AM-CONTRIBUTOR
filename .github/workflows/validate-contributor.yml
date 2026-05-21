@@ -25,3 +25,6 @@ jobs:
           git fetch origin ${{ github.base_ref }} --depth=1
           git show origin/${{ github.base_ref }}:contributors.json > /tmp/base-contributors.json
           node .github/scripts/check-no-removals.mjs /tmp/base-contributors.json contributors.json
+
+      - name: Check no duplicate usernames against main
+        run: node .github/scripts/check-no-duplicate-against-base.mjs /tmp/base-contributors.json contributors.json
