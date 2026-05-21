@@ -1,0 +1,199 @@
+name: Merge contributor PR
+
+on:
+  pull_request_target:
+    types: [labeled]
+    paths:
+      - contributors.json
+
+  workflow_dispatch:
+    inputs:
+      pr-number:
+        description: 'PR number to merge'
+        required: true
+        type: number
+
+jobs:
+  merge:
+    name: Merge contributor PR into main
+    if: >-
+      (github.event_name == 'workflow_dispatch') ||
+      (github.event.label.name == 'merge-ready')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Merge contributor
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { execFileSync } = require('child_process');
+            const fs = require('fs');
+            const path = require('path');
+            const { owner, repo } = context.repo;
+
+            const git = (...args) =>
+              execFileSync('git', args, { encoding: 'utf8' }).trim();
+
+            const gitRaw = (...args) =>
+              execFileSync('git', args, { encoding: 'utf8' });
+
+            git('config', 'user.name', 'github-actions[bot]');
+            git('config', 'user.email', 'github-actions[bot]@users.noreply.github.com');
+
+            // Determine PR number
+            const prNumber = context.payload.inputs?.['pr-number']
+              ? Number(context.payload.inputs['pr-number'])
+              : context.payload.pull_request?.number;
+
+            if (!prNumber) {
+              core.setFailed('Could not determine PR number.');
+              return;
+            }
+
+            core.info(`Processing PR #${prNumber}…`);
+
+            // Verify PR exists and is open
+            let pr;
+            try {
+              const { data } = await github.rest.pulls.get({ owner, repo, pull_number: prNumber });
+              pr = data;
+            } catch {
+              core.setFailed(`PR #${prNumber} not found.`);
+              return;
+            }
+
+            if (pr.state !== 'open') {
+              core.setFailed(`PR #${prNumber} is not open (state: ${pr.state}).`);
+              return;
+            }
+
+            // Verify it touches contributors.json
+            const { data: files } = await github.rest.pulls.listFiles({
+              owner, repo, pull_number: prNumber, per_page: 100
+            });
+            if (!files.some(f => f.filename === 'contributors.json')) {
+              core.setFailed(`PR #${prNumber} does not modify contributors.json.`);
+              return;
+            }
+
+            // Fetch PR head commit
+            git('fetch', 'origin', `refs/pull/${prNumber}/head`, '--depth=1');
+            const prHeadSha = git('rev-parse', 'FETCH_HEAD');
+
+            // Extract PR's contributors.json
+            const prContent = gitRaw('show', `${prHeadSha}:contributors.json`);
+            const prFile = '/tmp/pr-contributors.json';
+            fs.writeFileSync(prFile, prContent);
+
+            // Validate
+            const tmpDir = '/tmp/validate-pr';
+            fs.mkdirSync(tmpDir, { recursive: true });
+            fs.writeFileSync(path.join(tmpDir, 'contributors.json'), prContent);
+            fs.copyFileSync(
+              path.join(process.cwd(), '.github/scripts/validate.mjs'),
+              path.join(tmpDir, 'validate.mjs')
+            );
+
+            const valResult = require('child_process').spawnSync(
+              'node', ['validate.mjs'],
+              { encoding: 'utf8', cwd: tmpDir }
+            );
+
+            if (valResult.status !== 0) {
+              const errMsg = (valResult.stderr || valResult.stdout || '').trim();
+              await github.rest.issues.createComment({
+                owner, repo, issue_number: prNumber,
+                body: `❌ **Validation failed** — please fix the errors below and update your PR:\n\n\`\`\`\n${errMsg}\n\`\`\``
+              });
+              core.setFailed(`Validation failed for PR #${prNumber}`);
+              return;
+            }
+
+            // Check no removals
+            const mainFile = path.join(process.cwd(), 'contributors.json');
+            const removalResult = require('child_process').spawnSync(
+              'node', ['.github/scripts/check-no-removals.mjs', mainFile, prFile],
+              { encoding: 'utf8', cwd: process.cwd() }
+            );
+
+            if (removalResult.status !== 0) {
+              const errMsg = (removalResult.stderr || removalResult.stdout || '').trim();
+              await github.rest.issues.createComment({
+                owner, repo, issue_number: prNumber,
+                body: `❌ **Contributors were removed** — this is not allowed. Please restore the removed entries.\n\n\`\`\`\n${errMsg}\n\`\`\``
+              });
+              core.setFailed(`Removal check failed for PR #${prNumber}`);
+              return;
+            }
+
+            // Compute merged content
+            const mergedContent = execFileSync('node', [
+              '.github/scripts/merge-contributors.mjs', mainFile, prFile
+            ], { encoding: 'utf8' });
+
+            const currentData = JSON.parse(fs.readFileSync(mainFile, 'utf8'));
+            const mergedData = JSON.parse(mergedContent);
+
+            if (mergedData.length === currentData.length) {
+              await github.rest.issues.createComment({
+                owner, repo, issue_number: prNumber,
+                body: `ℹ️ This contributor already exists in \`contributors.json\`. No new entries to add.`
+              });
+              core.setFailed(`PR #${prNumber} adds no new contributors (duplicate).`);
+              return;
+            }
+
+            // Write merged content
+            fs.writeFileSync(mainFile, mergedContent);
+            git('add', 'contributors.json');
+
+            // Build tree and create merge commit
+            const tree = git('write-tree');
+            const mainHead = git('rev-parse', 'HEAD');
+
+            const newUsernames = mergedData.slice(currentData.length).map(c => c.github).join(', ');
+            const commitMsg = `feat: add ${newUsernames} to the wall of fame (#${prNumber})`;
+            const mergeCommit = git(
+              'commit-tree', tree,
+              '-p', mainHead,
+              '-p', prHeadSha,
+              '-m', commitMsg
+            );
+
+            git('update-ref', 'refs/heads/main', mergeCommit);
+            git('push', 'origin', 'main');
+
+            core.info(`Pushed merge commit ${mergeCommit.slice(0, 8)} — PR #${prNumber} is now merged.`);
+
+            // Remove merge-ready label if it exists
+            try {
+              await github.rest.issues.removeLabel({
+                owner, repo, issue_number: prNumber, name: 'merge-ready'
+              });
+            } catch {
+              // Label might not exist, that's fine
+            }
+
+            // Post success comment
+            await github.rest.issues.createComment({
+              owner, repo, issue_number: prNumber,
+              body: [
+                `✅ **Your contribution has been merged!** Welcome to the Wall of Fame! 🎉`,
+                '',
+                `Your entry is now live on the [contributor wall](https://ossforall.github.io/I-AM-CONTRIBUTOR/).`,
+                '',
+                'Thank you for your open source contribution! 💜'
+              ].join('\n')
+            });
